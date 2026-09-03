@@ -63,3 +63,15 @@ i want addAnnotation, removeAnnotation, updateAnnotationGeometry, setAttribute, 
 i want three stacked canvas elements (image, annotations, overlay) only the image layer draws this phase, the other two exist but stay empty. screenToImage and imageToScreen conversion functions should be implemented. all stored coordinates are in image pixel space. these two functions should be the ONLY place coordinate math happens.i want a plus button in a top bar that opens a file picker, loads an image, and sets appropriate fields in the doc. i should be able ot pan by dragging, zoom with scrool wheel. u should also handle devicepixelratio. make sure to add a zoom status bar pecent and cursor postion in image coordinates and milliseconds per frame at the bottom (image of layout attached).
 
 remember no annotation tools, no drawing, no sidebar yet
+
+--------------
+
+three fixes first then phase 2.
+
+FIXES:
+1. two-finger scroll pans, pinch zooms branch on event ctrlKey
+2. loading an image resets the document and clears undo history - taking your sugestion
+3. the ms/frame readout is measuring the wrong thing. right now it times how long our draw calls take to issue, which excludes all the gpu work and reads 0.05ms but that's misleading. measure the interval between consecutive rAF callbacks instead, which is the real end to end frame cost. show a rolling median over the last ~60 frames so it doesn't flicker. display both numbers. the frame interval and separately the time our draw code costs.
+
+phase 2 is tool rail and the rectangle tool. I wannt a working tool rail, and the ability to draw, select, move and resize bounding boxes. i need a tool interface so every tool is an object. all pointer events route through one place that dispatches to the active tool. build this structure  as it will be important later for the polygon and brush tools. the left rail with six icons - select V, rectangle R, polygon P, brush B, eraser E, pan H. polygon, brush and eraser are visible but disabled for this phase. keyboard shortcuts work. the rectangle tool is drag to create. the box is stored in image coordinates. the select tool is click a shape to select it, drag to move it, drag corner handles to resize. the delete key removes the selected shape. annotations draw on the annotations layer, and have an annotation count in the status bar.
+
