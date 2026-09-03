@@ -20,6 +20,7 @@ export interface KeyboardDeps {
   undo(): void
   redo(): void
   cancelGesture(): void
+  commitGesture(): void
 }
 
 export function createKeyboard(deps: KeyboardDeps): void {
@@ -51,6 +52,13 @@ export function createKeyboard(deps: KeyboardDeps): void {
 
     if (event.key === 'Escape') {
       deps.cancelGesture()
+      return
+    }
+
+    // Enter finishes a multi-step gesture, e.g. closing a polygon.
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      deps.commitGesture()
       return
     }
 

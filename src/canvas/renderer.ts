@@ -5,7 +5,14 @@
 // draw at most once per display refresh no matter how noisy the input is.
 
 import { CANVAS_BACKGROUND, type Layers } from './layers.ts'
-import { bboxToScreen, drawBox, drawBoxLabel } from './draw.ts'
+import {
+  bboxToScreen,
+  drawBox,
+  drawLabelChip,
+  drawPolygon,
+  polygonToScreen,
+  screenBounds,
+} from './draw.ts'
 import type { Tool } from '../tools/types.ts'
 import type { ReadonlyDocument, SessionState, Viewport } from '../state/types.ts'
 
@@ -125,12 +132,20 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
 
     for (const annotation of document.annotations) {
       if (annotation.id === hidden) continue
-      if (annotation.type !== 'bbox') continue // polygon lands in a later phase
       const label = document.labels.find((l) => l.id === annotation.labelId)
       const color = label?.color ?? FALLBACK_COLOR
-      const rect = bboxToScreen(annotation.geometry, viewport)
-      drawBox(ctx, rect, color, { selected: annotation.id === selectedId })
-      drawBoxLabel(ctx, rect, label?.name ?? 'Unknown', color)
+      const name = label?.name ?? 'Unknown'
+      const selected = annotation.id === selectedId
+
+      if (annotation.type === 'bbox') {
+        const rect = bboxToScreen(annotation.geometry, viewport)
+        drawBox(ctx, rect, color, { selected })
+        drawLabelChip(ctx, { x: Math.min(rect.x, rect.x + rect.width), y: Math.min(rect.y, rect.y + rect.height) }, name, color)
+      } else {
+        const points = polygonToScreen(annotation.geometry, viewport)
+        drawPolygon(ctx, points, color, { selected })
+        drawLabelChip(ctx, screenBounds(points), name, color)
+      }
     }
   }
 

@@ -1,12 +1,18 @@
 /* Must match CANVAS_BACKGROUND in src/canvas/layers.ts. */
+/*
+ * Deliberately colourless. The image and the annotations drawn on it are the
+ * only saturated things on screen; every control here is neutral grey so class
+ * colours never have to compete with the UI for attention.
+ */
 :root {
-  --canvas-bg: #14161a;
-  --chrome-bg: #1c1f24;
-  --chrome-border: #2c3038;
-  --text: #d8dce3;
-  --text-dim: #8b93a1;
-  --accent: #4c8dff;
-  --error: #ff6b6b;
+  --canvas-bg: #0e0e10; /* must match CANVAS_BACKGROUND in canvas/layers.ts */
+  --chrome-bg: #141416;
+  --chrome-hover: #1c1c20;
+  --chrome-border: #2b2b30;
+  --text: #e2e2e6;
+  --text-dim: #86868e;
+  --selected: #7a7a84; /* the ONLY selection cue: a thin neutral border */
+  --error: #d05a5a;
 }
 
 * {
@@ -59,8 +65,8 @@ body {
 }
 
 #open-button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--selected);
+  color: var(--text);
 }
 
 #image-name {
@@ -112,13 +118,13 @@ body {
 
 #toolrail button:hover:not(:disabled) {
   color: var(--text);
-  background: #23272e;
+  background: var(--chrome-hover);
 }
 
 #toolrail button.is-active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: #202634;
+  color: var(--text);
+  border-color: var(--selected);
+  background: var(--chrome-hover);
 }
 
 #toolrail button:disabled {
@@ -162,6 +168,9 @@ body {
   place-content: center;
   margin: 0;
   color: var(--text-dim);
+  text-align: center;
+  /* The message is wrapped in a single <span> on purpose: grid would otherwise
+     make each inline child its own row and break the sentence apart. */
   pointer-events: none; /* never intercept a drag aimed at the canvas */
 }
 
@@ -172,7 +181,7 @@ body {
 }
 
 #canvas-empty strong {
-  color: var(--accent);
+  color: var(--text);
 }
 
 /* --- sidebar -------------------------------------------------------------- */
@@ -235,13 +244,13 @@ body {
 }
 
 .row:hover {
-  background: #23272e;
+  background: var(--chrome-hover);
 }
 
 .row.is-active,
 .row.is-selected {
-  border-color: var(--accent);
-  background: #202634;
+  border-color: var(--selected);
+  background: var(--chrome-hover);
 }
 
 .row-name {
@@ -283,8 +292,8 @@ body {
 }
 
 #add-class:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--selected);
+  color: var(--text);
 }
 
 .field {
@@ -305,7 +314,7 @@ body {
   padding: 5px 7px;
   border: 1px solid var(--chrome-border);
   border-radius: 5px;
-  background: #14161a;
+  background: #0b0b0d;
   color: var(--text);
   font: inherit;
 }
@@ -314,11 +323,12 @@ body {
   justify-self: start;
   width: 15px;
   height: 15px;
-  accent-color: var(--accent);
+  accent-color: var(--text-dim);
 }
 
-.field :focus-visible {
-  outline: 1px solid var(--accent);
+.field :focus-visible,
+#class-form :focus-visible {
+  outline: 1px solid var(--selected);
   outline-offset: 0;
 }
 
@@ -327,4 +337,139 @@ body {
   color: var(--text-dim);
   font-size: 11px;
   line-height: 1.5;
+}
+
+/* --- add-class form ------------------------------------------------------- */
+#class-form {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 9px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 6px;
+}
+
+#class-form input[type='text'],
+#class-form select,
+#class-form button {
+  padding: 5px 7px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 4px;
+  background: #0b0b0d;
+  color: var(--text);
+  font: inherit;
+}
+
+#class-form button {
+  cursor: pointer;
+}
+
+#class-form button.ghost {
+  background: none;
+  color: var(--text-dim);
+}
+
+#class-form button.ghost:hover {
+  border-color: var(--selected);
+  color: var(--text);
+}
+
+/* Grid items default to min-width:auto, so a long <option> or a wide input can
+   push a track past its declared size and overflow the panel. */
+#class-form > *,
+.attr-row > * {
+  min-width: 0;
+}
+
+#class-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.swatch-option {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--chrome-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.swatch-option.is-chosen {
+  border-color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--chrome-bg);
+}
+
+.attr-row {
+  display: grid;
+  /* Explicit placement, not auto-flow: the options field takes a whole second
+     line, and without pinning the remove button it gets pushed onto a third. */
+  grid-template-columns: 1fr 92px 20px;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.attr-row > input:first-child {
+  grid-area: 1 / 1;
+}
+
+.attr-row > select {
+  grid-area: 1 / 2;
+  padding-left: 5px;
+  padding-right: 2px;
+}
+
+.attr-remove {
+  grid-area: 1 / 3;
+  padding: 0 !important;
+  color: var(--text-dim) !important;
+}
+
+.attr-row .attr-options {
+  grid-area: 2 / 1 / 2 / -1; /* full width, on its own line */
+}
+
+.form-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.form-actions button {
+  flex: 1;
+}
+
+/* --- class row delete ----------------------------------------------------- */
+.row-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-delete {
+  flex: none;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: transparent;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.class-row:hover .row-delete {
+  color: var(--text-dim);
+}
+
+.row-delete:hover {
+  color: var(--error) !important;
 }

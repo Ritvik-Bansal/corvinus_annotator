@@ -65,7 +65,9 @@ export function createInteractions(target: HTMLElement, deps: InteractionDeps): 
   target.addEventListener('pointermove', (event: PointerEvent) => {
     const screen = toLocal(event)
     cursorImagePoint = screenToImage(screen, deps.getViewport())
-    if (!gestureActive) return
+    // Dispatched even with no button held: the polygon tool's rubber-band
+    // segment has to follow the cursor between clicks. Every drag-based tool
+    // already guards on its own gesture state, so this is safe for all of them.
     deps.getActiveTool()?.onPointerMove(contextFor(event))
     deps.markOverlayDirty()
   })

@@ -44,7 +44,9 @@ const tools = createTools({
   setViewport: (viewport) => store.setSession({ viewport }),
   select: (selectedAnnotationId) => store.setSession({ selectedAnnotationId }),
   addAnnotation: (labelId, geometry) => actions.addAnnotation({ type: 'bbox', labelId, geometry }),
+  addPolygon: (labelId, geometry) => actions.addAnnotation({ type: 'polygon', labelId, geometry }),
   updateGeometry: (id, geometry) => actions.updateAnnotationGeometry(id, geometry),
+  getActiveLabelId: () => store.getSession().activeLabelId,
   labelColor: (labelId) =>
     store.getDocument().labels.find((l) => l.id === labelId)?.color ?? FALLBACK_COLOR,
 })
@@ -83,6 +85,12 @@ const sidebar = createSidebar(
   {
     classList: need<HTMLElement>('#class-list'),
     addClassButton: need<HTMLButtonElement>('#add-class'),
+    classForm: need<HTMLFormElement>('#class-form'),
+    classNameInput: need<HTMLInputElement>('#class-name'),
+    classSwatches: need<HTMLElement>('#class-swatches'),
+    classAttrRows: need<HTMLElement>('#class-attrs'),
+    addAttrButton: need<HTMLButtonElement>('#add-attr'),
+    cancelClassButton: need<HTMLButtonElement>('#cancel-class'),
     annotationList: need<HTMLElement>('#annotation-list'),
     attributeFields: need<HTMLElement>('#attribute-fields'),
   },
@@ -93,6 +101,7 @@ const sidebar = createSidebar(
     selectAnnotation: (selectedAnnotationId) => store.setSession({ selectedAnnotationId }),
     // Every sidebar edit goes through an action, so undo covers all of them.
     addLabel: (name, color, attributes) => actions.addLabel({ name, color, attributes }),
+    removeLabel: (labelId, cascade) => actions.removeLabel(labelId, { cascade }),
     setAttribute: (id, key, value) => actions.setAttribute(id, key, value),
   },
 )
@@ -113,6 +122,10 @@ createKeyboard({
   redo: () => store.redo(),
   cancelGesture: () => {
     activeTool()?.cancel()
+    renderer.markDirty('overlay')
+  },
+  commitGesture: () => {
+    activeTool()?.commit()
     renderer.markDirty('overlay')
   },
 })

@@ -57,6 +57,8 @@ export function createRectangleTool(deps: RectangleDeps): Tool {
       deps.select(deps.addAnnotation(labelId, box))
     },
 
+    commit(): void {}, // nothing multi-step to finish
+
     drawOverlay(ctx: CanvasRenderingContext2D, view: ToolView): void {
       const box = geometry()
       if (box === null) return

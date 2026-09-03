@@ -26,7 +26,7 @@ export const SEED_LABELS: Label[] = [
     id: 'label_reagent_bottle',
     index: 1,
     name: 'Reagent Bottle',
-    color: '#4363d8',
+    color: '#2060ff',
     attributes: [
       {
         key: 'liquidLevel',
@@ -51,7 +51,7 @@ export const SEED_LABELS: Label[] = [
     id: 'label_pipette_tip',
     index: 2,
     name: 'Pipette Tip',
-    color: '#3cb44b',
+    color: '#00c020',
     attributes: [
       {
         key: 'volume',
@@ -68,7 +68,7 @@ export const SEED_LABELS: Label[] = [
     id: 'label_microplate',
     index: 3,
     name: 'Microplate',
-    color: '#e6194b',
+    color: '#ff2020',
     attributes: [
       {
         key: 'format',
@@ -84,15 +84,20 @@ export const SEED_LABELS: Label[] = [
 ]
 
 /** Colours offered to user-created classes, in order, skipping ones in use. */
+/**
+ * Saturated, not pastel. These sit on top of unpredictable photo content, and a
+ * washed-out colour disappears over a busy image — the same reason the chrome
+ * is deliberately colourless.
+ */
 export const LABEL_PALETTE: readonly string[] = [
-  '#f58231', // orange
-  '#911eb4', // purple
-  '#42d4f4', // cyan
-  '#f032e6', // magenta
-  '#bfef45', // lime
-  '#469990', // teal
-  '#fabed4', // pink
-  '#dcbeff', // lavender
+  '#ff8c00', // orange
+  '#a020ff', // purple
+  '#00c8d7', // cyan
+  '#e0b000', // amber
+  '#ff00a0', // magenta
+  '#80e000', // lime
+  '#00b090', // teal
+  '#ff5555', // salmon
 ]
 
 /** First palette colour not already taken, so new classes stay distinguishable. */

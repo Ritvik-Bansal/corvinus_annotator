@@ -49,7 +49,7 @@
         <canvas id="layer-image"></canvas>
         <canvas id="layer-annotations"></canvas>
         <canvas id="layer-overlay"></canvas>
-        <p id="canvas-empty">Open an image with <strong>+</strong> to start annotating.</p>
+        <p id="canvas-empty"><span>Open an image with <strong>+</strong> to start annotating.</span></p>
       </div>
 
       <aside id="sidebar">
@@ -57,6 +57,16 @@
           <h2>Classes</h2>
           <div id="class-list"></div>
           <button id="add-class" type="button">+ Add new class</button>
+          <form id="class-form" hidden>
+            <input id="class-name" type="text" placeholder="Class name" autocomplete="off" required />
+            <div id="class-swatches"></div>
+            <div id="class-attrs"></div>
+            <button id="add-attr" type="button" class="ghost">+ Attribute</button>
+            <div class="form-actions">
+              <button type="submit">Create class</button>
+              <button id="cancel-class" type="button" class="ghost">Cancel</button>
+            </div>
+          </form>
         </section>
         <section class="panel">
           <h2>Annotations</h2>

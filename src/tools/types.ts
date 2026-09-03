@@ -44,6 +44,9 @@ export interface Tool {
    */
   hiddenAnnotationId(): string | null
 
+  /** Finish a multi-step gesture early (Enter). No-op for one-drag tools. */
+  commit(): void
+
   /** Abandon any gesture in progress (tool switch, Escape, pointer cancel). */
   cancel(): void
 }

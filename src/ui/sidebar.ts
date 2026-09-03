@@ -7,7 +7,8 @@
 // real stall — so a viewport-only change returns immediately, before touching
 // the DOM at all.
 
-import { nextLabelColor } from '../state/defaults.ts'
+import { LABEL_PALETTE, nextLabelColor } from '../state/defaults.ts'
+import type { RemoveLabelResult } from '../state/actions.ts'
 import type { ChangeKind } from '../state/store.ts'
 import type {
   AttributeDef,
@@ -22,12 +23,19 @@ export interface SidebarDeps {
   setActiveLabel(labelId: string): void
   selectAnnotation(id: string | null): void
   addLabel(name: string, color: string, attributes: AttributeDef[]): string
+  removeLabel(labelId: string, cascade: boolean): RemoveLabelResult
   setAttribute(annotationId: string, key: string, value: AttributeValue): void
 }
 
 export interface SidebarElements {
   classList: HTMLElement
   addClassButton: HTMLButtonElement
+  classForm: HTMLFormElement
+  classNameInput: HTMLInputElement
+  classSwatches: HTMLElement
+  classAttrRows: HTMLElement
+  addAttrButton: HTMLButtonElement
+  cancelClassButton: HTMLButtonElement
   annotationList: HTMLElement
   attributeFields: HTMLElement
 }
@@ -49,7 +57,16 @@ export function createSidebar(elements: SidebarElements, deps: SidebarDeps): Sid
   let builtFor = ''
   const inputs = new Map<string, HTMLInputElement | HTMLSelectElement>()
 
-  elements.addClassButton.addEventListener('click', handleAddClass)
+  elements.addClassButton.addEventListener('click', openClassForm)
+  elements.cancelClassButton.addEventListener('click', closeClassForm)
+  elements.addAttrButton.addEventListener('click', addAttrRow)
+  elements.classForm.addEventListener('submit', (event) => {
+    event.preventDefault() // never navigate; required fields are already validated
+    const name = elements.classNameInput.value.trim()
+    if (name === '') return
+    deps.addLabel(name, pendingColor, collectAttributes())
+    closeClassForm()
+  })
 
   // -------------------------------------------------------------------------
   // Classes
@@ -64,33 +81,192 @@ export function createSidebar(elements: SidebarElements, deps: SidebarDeps): Sid
   }
 
   function classRow(label: DeepLabel, index: number, active: boolean): HTMLElement {
-    const row = document.createElement('button')
-    row.type = 'button'
+    // A div, not a button: the delete control is a button and nesting buttons
+    // is invalid HTML.
+    const row = document.createElement('div')
     row.className = 'row class-row' + (active ? ' is-active' : '')
     row.dataset.labelId = label.id
-    // The number-key hint doubles as documentation for the shortcut.
-    row.innerHTML =
-      `<span class="swatch" style="background:${label.color}"></span>` +
-      `<span class="row-name"></span>` +
-      (index < 9 ? `<kbd>${index + 1}</kbd>` : '')
-    const name = row.querySelector('.row-name')
-    if (name !== null) name.textContent = label.name // textContent, never innerHTML: names are user input
-    row.addEventListener('click', () => deps.setActiveLabel(label.id))
+
+    const main = document.createElement('button')
+    main.type = 'button'
+    main.className = 'row-main'
+    const swatch = document.createElement('span')
+    swatch.className = 'swatch'
+    swatch.style.background = label.color
+    const name = document.createElement('span')
+    name.className = 'row-name'
+    name.textContent = label.name // textContent, never innerHTML: names are user input
+    main.append(swatch, name)
+    main.addEventListener('click', () => deps.setActiveLabel(label.id))
+    row.append(main)
+
+    if (index < 9) {
+      const hint = document.createElement('kbd')
+      hint.textContent = String(index + 1) // doubles as documentation for the shortcut
+      row.append(hint)
+    }
+
+    const remove = document.createElement('button')
+    remove.type = 'button'
+    remove.className = 'row-delete'
+    remove.title = `Delete ${label.name}`
+    remove.textContent = '\u00d7'
+    remove.addEventListener('click', (event) => {
+      event.stopPropagation()
+      handleRemoveClass(label.id, label.name)
+    })
+    row.append(remove)
     return row
   }
 
-  function handleAddClass(): void {
-    const name = window.prompt('New class name')?.trim()
-    if (name === undefined || name === '') return
+  /**
+   * Uses removeLabel's refuse-then-cascade contract: the first call reports what
+   * would be destroyed, and only an explicit confirmation passes cascade. The
+   * cascade goes through commit(), so a mistaken confirmation is one undo away.
+   */
+  function handleRemoveClass(labelId: string, name: string): void {
+    const first = deps.removeLabel(labelId, false)
+    if (first.removed) return
+    if (first.reason === 'not-found') return
 
-    const spec = window.prompt(
-      'Attributes for "' + name + '" (optional).\n\n' +
-        'Comma separated, Name:type. Types: text, number, boolean, enum(A|B|C)\n\n' +
-        'Example:  Volume:number, State:enum(Open|Closed), Sealed:boolean',
-      '',
+    const parts: string[] = []
+    if (first.annotations > 0) {
+      parts.push(`${first.annotations} annotation${first.annotations === 1 ? '' : 's'}`)
+    }
+    if (first.strokes > 0) {
+      parts.push(`${first.strokes} stroke${first.strokes === 1 ? '' : 's'}`)
+    }
+    const confirmed = window.confirm(
+      `Delete the class "${name}"?\n\n` +
+        `${parts.join(' and ')} use this class and will be deleted too.\n\n` +
+        `This can be undone with Ctrl+Z.`,
     )
+    if (confirmed) deps.removeLabel(labelId, true)
+  }
+
+  // -------------------------------------------------------------------------
+  // Add-class form
+  //
+  // The type is a dropdown rather than free text on purpose: a value that
+  // cannot be typed cannot be mistyped, so "bollean" silently becoming a text
+  // field is not a failure mode that exists any more. Same principle as the
+  // paint/erase stroke union — make the wrong version unconstructible instead
+  // of validating after the fact.
+  // -------------------------------------------------------------------------
+
+  let pendingColor = LABEL_PALETTE[0]
+
+  function openClassForm(): void {
     const used = deps.getDocument().labels.map((l) => l.color)
-    deps.addLabel(name, nextLabelColor(used), parseAttributeSpec(spec ?? ''))
+    pendingColor = nextLabelColor(used)
+    elements.classNameInput.value = ''
+    elements.classAttrRows.replaceChildren()
+    renderSwatches()
+    elements.addClassButton.hidden = true
+    elements.classForm.hidden = false
+    elements.classNameInput.focus()
+  }
+
+  function closeClassForm(): void {
+    // Move focus out BEFORE hiding. A focused element inside a hidden subtree
+    // keeps receiving key events, and the keyboard handler ignores keys aimed
+    // at an <input> — so every tool shortcut would be silently swallowed until
+    // the user happened to click somewhere else.
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement && elements.classForm.contains(focused)) focused.blur()
+    elements.classForm.hidden = true
+    elements.addClassButton.hidden = false
+  }
+
+  function renderSwatches(): void {
+    elements.classSwatches.replaceChildren(
+      ...LABEL_PALETTE.map((color) => {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'swatch-option' + (color === pendingColor ? ' is-chosen' : '')
+        button.style.background = color
+        button.title = color
+        button.addEventListener('click', () => {
+          pendingColor = color
+          renderSwatches()
+        })
+        return button
+      }),
+    )
+  }
+
+  function addAttrRow(): void {
+    const row = document.createElement('div')
+    row.className = 'attr-row'
+
+    const name = document.createElement('input')
+    name.type = 'text'
+    name.placeholder = 'Attribute name'
+    name.required = true // native validation; no custom error UI needed
+    name.autocomplete = 'off'
+
+    const type = document.createElement('select')
+    for (const [value, text] of [
+      ['text', 'Text'],
+      ['number', 'Number'],
+      ['boolean', 'Yes/No'],
+      ['enum', 'Options'],
+    ]) {
+      const option = document.createElement('option')
+      option.value = value
+      option.textContent = text
+      type.append(option)
+    }
+
+    const options = document.createElement('input')
+    options.type = 'text'
+    options.className = 'attr-options'
+    options.placeholder = 'Open | Closed'
+    options.hidden = true
+
+    type.addEventListener('change', () => {
+      const isEnum = type.value === 'enum'
+      options.hidden = !isEnum
+      // Required only while it is showing, so an Options row cannot be created
+      // with nothing to choose from.
+      options.required = isEnum
+    })
+
+    const remove = document.createElement('button')
+    remove.type = 'button'
+    remove.className = 'attr-remove'
+    remove.textContent = '\u00d7'
+    remove.addEventListener('click', () => row.remove())
+
+    row.append(name, type, options, remove)
+    elements.classAttrRows.append(row)
+    name.focus()
+  }
+
+  function collectAttributes(): AttributeDef[] {
+    const definitions: AttributeDef[] = []
+    for (const row of elements.classAttrRows.querySelectorAll('.attr-row')) {
+      const name = row.querySelector('input:not(.attr-options)')
+      const type = row.querySelector('select')
+      const options = row.querySelector('.attr-options')
+      if (!(name instanceof HTMLInputElement) || !(type instanceof HTMLSelectElement)) continue
+      const label = name.value.trim()
+      if (label === '') continue
+      const key = toKey(label)
+
+      if (type.value === 'enum' && options instanceof HTMLInputElement) {
+        const values = options.value
+          .split('|')
+          .map((o) => o.trim())
+          .filter((o) => o !== '')
+        if (values.length > 0) definitions.push({ key, name: label, type: 'enum', options: values })
+        continue
+      }
+      if (type.value === 'number') definitions.push({ key, name: label, type: 'number' })
+      else if (type.value === 'boolean') definitions.push({ key, name: label, type: 'boolean' })
+      else definitions.push({ key, name: label, type: 'text' })
+    }
+    return definitions
   }
 
   // -------------------------------------------------------------------------
@@ -318,41 +494,6 @@ function emptyMessage(text: string): HTMLElement {
   element.className = 'empty'
   element.textContent = text
   return element
-}
-
-/**
- * Parses "Volume:number, State:enum(Open|Closed), Sealed:boolean" into
- * attribute definitions. Bare "Notes" is treated as text.
- */
-export function parseAttributeSpec(spec: string): AttributeDef[] {
-  const definitions: AttributeDef[] = []
-  for (const part of spec.split(',')) {
-    const trimmed = part.trim()
-    if (trimmed === '') continue
-
-    const separator = trimmed.indexOf(':')
-    const name = (separator === -1 ? trimmed : trimmed.slice(0, separator)).trim()
-    // Keep the original case: lowercasing for the type comparison would also
-    // lowercase the enum options, turning enum(Open|Closed) into open/closed.
-    const rawType = (separator === -1 ? 'text' : trimmed.slice(separator + 1)).trim()
-    const type = rawType.toLowerCase()
-    if (name === '') continue
-    const key = toKey(name)
-
-    const enumMatch = /^enum\((.*)\)$/i.exec(rawType)
-    if (enumMatch !== null) {
-      const options = enumMatch[1]
-        .split('|')
-        .map((o) => o.trim())
-        .filter((o) => o !== '')
-      if (options.length > 0) definitions.push({ key, name, type: 'enum', options })
-      continue
-    }
-    if (type === 'number') definitions.push({ key, name, type: 'number' })
-    else if (type === 'boolean') definitions.push({ key, name, type: 'boolean' })
-    else definitions.push({ key, name, type: 'text' })
-  }
-  return definitions
 }
 
 /** "Liquid Level" -> "liquidLevel", so exported JSON keys stay machine friendly. */

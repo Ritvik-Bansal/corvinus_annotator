@@ -20,6 +20,8 @@ export function createPanTool(setViewport: (viewport: Viewport) => void): Tool {
     onPointerUp(): void {
       lastScreen = null
     },
+    commit(): void {}, // nothing multi-step to finish
+
     drawOverlay(): void {},
     hiddenAnnotationId: () => null,
     cancel(): void {

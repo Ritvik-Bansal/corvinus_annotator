@@ -9,7 +9,7 @@
 export const MAX_DPR = 2
 
 /** Must match --canvas-bg in style.css. The image layer is opaque (see below). */
-export const CANVAS_BACKGROUND = '#14161a'
+export const CANVAS_BACKGROUND = '#0e0e10'
 
 export interface LayerContexts {
   image: CanvasRenderingContext2D
