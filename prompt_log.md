@@ -115,3 +115,30 @@ after this phase I should be able to export, refresh the page, reopen the same i
 
 --------------
 
+[12] starting phase 6 for the brush and eraser. i think this featuer will be the hardest so flag anuthing early on that isnt working rather than pushing through it and creating more bugs.
+
+the brush and eraser should be enabled in the left panel. the brushes job is the paint in the selected class while the eraser removed painted pixels from ALL classes not just the active one. there should be a little dialouge to adjust brush size which only pops up if the brush or eraser are selected. the order these are in the json/array matters becuase erasers remove from all classes. one stroke counts as one undo entry.
+
+here are some key design implementations for how it should be built. strokes are storing the MOVEMENT of the user not the individual pizels and the mask that is on the screen is recrated by essentially replaying the stroke list onto an offscreen canvas (whcih is cached and only re invalidated when the stroke list is altered/changed) MAKE sure you not do NOT replay on every frame or else it will just get slow with every stroke.
+
+i know u have a successful product when u pass these test: painting w two diff classes and erase cross both works fine in one stroke, saving+reload+import the json brings the strokes back to where they were, undoing strokes removes only one at a time, and the brush size stays consistent across different zoom levels!
+
+this will be super complicated and hard so if you have any questions ask in the chat!
+
+--------------
+
+[13] minor issue! when you draw your first stroke you can't actually see what it is drawing until you let go and then the drawing pops up. after that, however, the drawing tool seems to be working flawlessly and you can see what is being drawn over while you are using the tool. i also undid back to zero strokes and drew again — same issue where the first stroke ever done using the paintbrush is first invisible. lets diagnose this issue, tell me where it is, tell me how to fix it, and then if I give you the approval, lets make the fix. 
+
+brush strokes also dont show up anywhere except on the canvas. theyre not in the
+annotations list and theres no class name on them like boxes and polygons have.
+
+i think this is because strokes live in their own array separate from annotations because of
+the global eraser rule. i dont want that to change as its the right model but the ui needs to take that into account.
+
+it needs to be super similar to the bbox and polygon structure currently where clicking on the row makes that class active. make sure to include the class name chip on the canvas as well that is near the mask. MASKS WORK DIFFERENT FROM ANNOTAITONS! the status bar therefore should also count them separately,  like 2 annotations . 2 masks so its clear.
+
+Masks are per class, not per instance. we can have 3 diff bounding boxes on three diff pipette tips, each with its own attributes. but we only get one microplate mask, covering every microplate pixel you painted, essentially it's semantic segmentation means where a pixel belongs to one class.
+
+--------------
+
+[14] apply the fix! it looks like you found the correct bug and i have verified it on my own.
