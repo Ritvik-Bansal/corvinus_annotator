@@ -193,6 +193,8 @@ export interface SessionState {
   activeLabelId: string | null
   brushRadius: number
   selectedAnnotationId: string | null
+  /** Mask row hovered in the sidebar, outlined on canvas. Never exported. */
+  highlightedMaskLabelId: string | null
 }
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { store } from './state/store.ts'
 import { createInteractions } from './canvas/interactions.ts'
 import { createLayers } from './canvas/layers.ts'
 import { createMask } from './canvas/mask.ts'
+import { maskedLabelIds } from './state/masks.ts'
 import { createRenderer } from './canvas/renderer.ts'
 import { loadImageFile } from './canvas/image.ts'
 import { fitToViewport } from './canvas/viewport.ts'
@@ -120,6 +121,7 @@ const sidebar = createSidebar(
     getDocument: () => store.getDocument(),
     getSession: () => store.getSession(),
     setActiveLabel: (activeLabelId) => store.setSession({ activeLabelId }),
+    highlightMask: (highlightedMaskLabelId) => store.setSession({ highlightedMaskLabelId }),
     selectAnnotation: (selectedAnnotationId) => store.setSession({ selectedAnnotationId }),
     // Every sidebar edit goes through an action, so undo covers all of them.
     addLabel: (name, color, attributes) => actions.addLabel({ name, color, attributes }),
@@ -234,7 +236,10 @@ store.subscribe((kind) => {
 
 renderer.start(() => {
   statusBar.update(
-    store.getDocument().annotations.length,
+    {
+      annotations: store.getDocument().annotations.length,
+      masks: maskedLabelIds(store.getDocument()).length,
+    },
     store.getSession().viewport,
     interactions.getCursorImagePoint(),
     { intervalMs: renderer.getFrameIntervalMs(), drawMs: renderer.getDrawMs() },

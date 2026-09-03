@@ -144,6 +144,29 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
       ctx.drawImage(mask.canvas, 0, 0)
       ctx.restore()
     }
+
+    // One chip per painted class, anchored to that class's painted extent.
+    // Drawn back in screen space, so it reads the same at every zoom — and it
+    // stays put through pan and zoom because the anchor goes through
+    // imageToScreen like every other position on this layer.
+    const highlighted = scene.getSession().highlightedMaskLabelId
+    for (const [labelId, box] of mask.getClassBounds()) {
+      const label = document.labels.find((l) => l.id === labelId)
+      if (label === undefined) continue
+      const rect = bboxToScreen(
+        { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY },
+        viewport,
+      )
+      if (labelId === highlighted) {
+        ctx.save()
+        ctx.strokeStyle = label.color
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([6, 4])
+        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
+        ctx.restore()
+      }
+      drawLabelChip(ctx, { x: rect.x, y: rect.y }, label.name, label.color)
+    }
     const selectedId = scene.getSession().selectedAnnotationId
     // Suppressed because a tool is drawing a live version of it on the overlay.
     const hidden = scene.getActiveTool()?.hiddenAnnotationId() ?? null

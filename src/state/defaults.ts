@@ -125,5 +125,6 @@ export function createInitialSession(): SessionState {
     activeLabelId: SEED_LABELS[0].id,
     brushRadius: 24,
     selectedAnnotationId: null,
+    highlightedMaskLabelId: null,
   }
 }

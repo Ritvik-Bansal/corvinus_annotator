@@ -21,6 +21,7 @@
 // replayed, which makes what you see while painting identical to what you get
 // after an export/import round trip.
 
+import { maskBounds, type MaskBounds } from '../state/masks.ts'
 import type { ReadonlyDocument } from '../state/types.ts'
 
 /** How strongly the mask reads over the photo. */
@@ -50,6 +51,11 @@ export interface Mask {
     from: { x: number; y: number },
     to: { x: number; y: number },
   ): void
+  /**
+   * Image-space extent of each class's paint strokes. Recomputed only when the
+   * stroke list changes, so the chips cost nothing per frame.
+   */
+  getClassBounds(): ReadonlyMap<string, MaskBounds>
   /** Clears the cache; the next sync replays every stroke from scratch. */
   invalidate(): void
   hasContent(): boolean
@@ -67,6 +73,7 @@ export function createMask(): Mask {
 
   /** Ids currently drawn on the canvas, in order. The cache key. */
   let renderedIds: string[] = []
+  let classBounds: ReadonlyMap<string, MaskBounds> = new Map()
   let width = 0
   let height = 0
 
@@ -156,7 +163,12 @@ export function createMask(): Mask {
         drawStroke(strokes[i], colorFor(document, strokes[i]))
         renderedIds.push(strokes[i].id)
       }
+      // Only reached when the stroke list actually changed, so this is not
+      // per-frame work.
+      classBounds = maskBounds(document)
     },
+
+    getClassBounds: () => classBounds,
 
     drawSegment(mode, color, radius, from, to): void {
       ctx.save()

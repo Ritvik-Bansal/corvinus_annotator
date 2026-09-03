@@ -79,7 +79,12 @@ export function createBrushControl(
 }
 
 export interface StatusBar {
-  update(count: number, viewport: Viewport, cursor: Point | null, timing: FrameTiming): void
+  update(
+    counts: { annotations: number; masks: number },
+    viewport: Viewport,
+    cursor: Point | null,
+    timing: FrameTiming,
+  ): void
 }
 
 export interface FrameTiming {
@@ -101,8 +106,17 @@ export function createStatusBar(
   let lastFrame = ''
 
   return {
-    update(count: number, viewport: Viewport, cursor: Point | null, timing: FrameTiming): void {
-      const countText = `${count} annotation${count === 1 ? '' : 's'}`
+    update(
+      counts: { annotations: number; masks: number },
+      viewport: Viewport,
+      cursor: Point | null,
+      timing: FrameTiming,
+    ): void {
+      // Counted separately on purpose: an annotation is one instance, a mask is
+      // one whole class. Rolling them into one number would hide that.
+      const countText =
+        `${counts.annotations} annotation${counts.annotations === 1 ? '' : 's'}` +
+        `  \u00b7  ${counts.masks} mask${counts.masks === 1 ? '' : 's'}`
       if (countText !== lastCount) {
         lastCount = countText
         countEl.textContent = countText

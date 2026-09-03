@@ -8,6 +8,7 @@
 // the DOM at all.
 
 import { LABEL_PALETTE, nextLabelColor } from '../state/defaults.ts'
+import { maskedLabelIds } from '../state/masks.ts'
 import type { RemoveLabelResult } from '../state/actions.ts'
 import type { ChangeKind } from '../state/store.ts'
 import type {
@@ -21,6 +22,8 @@ export interface SidebarDeps {
   getDocument(): ReadonlyDocument
   getSession(): SessionState
   setActiveLabel(labelId: string): void
+  /** Null clears the highlight. */
+  highlightMask(labelId: string | null): void
   selectAnnotation(id: string | null): void
   addLabel(name: string, color: string, attributes: AttributeDef[]): string
   removeLabel(labelId: string, cascade: boolean): RemoveLabelResult
@@ -275,17 +278,57 @@ export function createSidebar(elements: SidebarElements, deps: SidebarDeps): Sid
 
   function renderAnnotations(): void {
     const document_ = deps.getDocument()
-    const selectedId = deps.getSession().selectedAnnotationId
+    const session = deps.getSession()
 
-    if (document_.annotations.length === 0) {
-      elements.annotationList.replaceChildren(emptyMessage('No annotations yet.'))
+    const rows: HTMLElement[] = document_.annotations.map((annotation) =>
+      annotationRow(annotation, document_, annotation.id === session.selectedAnnotationId),
+    )
+    // Masks come after the instances. One row per painted CLASS, not per
+    // stroke: five more Microplate strokes is still one Microplate mask.
+    for (const labelId of maskedLabelIds(document_)) {
+      const label = document_.labels.find((l) => l.id === labelId)
+      if (label === undefined) continue
+      rows.push(maskRow(label, labelId === session.activeLabelId))
+    }
+
+    if (rows.length === 0) {
+      elements.annotationList.replaceChildren(emptyMessage('Nothing annotated yet.'))
       return
     }
-    elements.annotationList.replaceChildren(
-      ...document_.annotations.map((annotation) =>
-        annotationRow(annotation, document_, annotation.id === selectedId),
-      ),
-    )
+    elements.annotationList.replaceChildren(...rows)
+  }
+
+  /**
+   * A mask row selects its CLASS rather than an instance, because a mask has no
+   * instance to select — the useful next action is to keep painting it.
+   */
+  function maskRow(label: DeepLabel, active: boolean): HTMLElement {
+    const row = document.createElement('button')
+    row.type = 'button'
+    row.className = 'row annotation-row mask-row' + (active ? ' is-active' : '')
+    row.dataset.maskLabelId = label.id
+
+    const swatch = document.createElement('span')
+    swatch.className = 'swatch'
+    swatch.style.background = label.color
+    const name = document.createElement('span')
+    name.className = 'row-name'
+    name.textContent = label.name
+    const badge = document.createElement('span')
+    badge.className = 'badge'
+    badge.textContent = 'mask'
+    row.append(swatch, name, badge)
+
+    row.addEventListener('click', () => {
+      // Masks carry no attributes, so leaving a previously selected box
+      // selected would keep its attribute fields on screen and make this click
+      // look like it did nothing.
+      deps.selectAnnotation(null)
+      deps.setActiveLabel(label.id)
+    })
+    row.addEventListener('mouseenter', () => deps.highlightMask(label.id))
+    row.addEventListener('mouseleave', () => deps.highlightMask(null))
+    return row
   }
 
   function annotationRow(
