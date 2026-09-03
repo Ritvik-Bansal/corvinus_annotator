@@ -81,6 +81,18 @@ export function createStore(
       notify('session')
     },
 
+    /**
+     * Replaces the document and DISCARDS all history. This is deliberately not
+     * undoable: it is used when opening an image, and the previous image's
+     * annotations must not be reachable by pressing Ctrl+Z on the new one.
+     */
+    reset(next: AnnotationDocument): void {
+      doc = next
+      undoStack = []
+      redoStack = []
+      notify('document')
+    },
+
     /** Returns false when there is nothing to undo. */
     undo(): boolean {
       const previous = undoStack.pop()

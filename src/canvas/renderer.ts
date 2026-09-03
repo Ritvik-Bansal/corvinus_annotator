@@ -5,26 +5,65 @@
 // draw at most once per display refresh no matter how noisy the input is.
 
 import { CANVAS_BACKGROUND, type Layers } from './layers.ts'
-import type { Viewport } from '../state/types.ts'
+import { bboxToScreen, drawBox } from './draw.ts'
+import type { Tool } from '../tools/types.ts'
+import type { ReadonlyDocument, SessionState, Viewport } from '../state/types.ts'
+
+/** Everything the renderer needs to read. It pulls; nothing pushes to it. */
+export interface Scene {
+  getBitmap(): ImageBitmap | null
+  getViewport(): Viewport
+  getDocument(): ReadonlyDocument
+  getSession(): SessionState
+  getActiveTool(): Tool | null
+}
+
+const FALLBACK_COLOR = '#8b93a1'
 
 export type LayerName = 'image' | 'annotations' | 'overlay'
+
+/** Samples kept for each rolling median. ~1 second at 60Hz. */
+const TIMING_WINDOW = 60
 
 export interface Renderer {
   markDirty(...layers: LayerName[]): void
   markAllDirty(): void
-  /** Smoothed cost of our draw work, in milliseconds. */
-  getFrameMs(): number
+  /**
+   * Rolling median interval between consecutive animation frames, in ms.
+   * This is the real end-to-end frame cost: it includes GPU compositing and
+   * anything else on the main thread, and it is what "smooth" actually means.
+   * ~16.7 on a healthy 60Hz display.
+   */
+  getFrameIntervalMs(): number
+  /**
+   * Rolling median time our own draw code spends issuing commands, in ms.
+   * This EXCLUDES GPU work, so it is always far smaller than the frame
+   * interval. It answers "how much of the frame budget is ours", not "how
+   * fast are we".
+   */
+  getDrawMs(): number
   /** Starts the loop. `onFrame` runs once per frame, after drawing. */
   start(onFrame: () => void): void
 }
 
-export function createRenderer(
-  layers: Layers,
-  getBitmap: () => ImageBitmap | null,
-  getViewport: () => Viewport,
-): Renderer {
+/** Median is used instead of a mean so one stalled frame cannot skew the readout. */
+function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
+function pushSample(samples: number[], value: number): void {
+  samples.push(value)
+  if (samples.length > TIMING_WINDOW) samples.shift()
+}
+
+export function createRenderer(layers: Layers, scene: Scene): Renderer {
   const dirty: Record<LayerName, boolean> = { image: true, annotations: true, overlay: true }
-  let frameMs = 0
+  const frameIntervals: number[] = []
+  const drawTimes: number[] = []
+  let lastTimestamp = 0
   let started = false
 
   function markDirty(...names: LayerName[]): void {
@@ -39,7 +78,7 @@ export function createRenderer(
     const ctx = layers.ctx.image
     const dpr = layers.getDpr()
     const { width, height } = layers.getSize()
-    const viewport = getViewport()
+    const viewport = scene.getViewport()
 
     // Reset to device pixels to paint the background. The layer is opaque, so
     // this fill (not clearRect) is what defines the empty area.
@@ -47,7 +86,7 @@ export function createRenderer(
     ctx.fillStyle = CANVAS_BACKGROUND
     ctx.fillRect(0, 0, width * dpr, height * dpr)
 
-    const bitmap = getBitmap()
+    const bitmap = scene.getBitmap()
     if (bitmap === null) return
 
     // The viewport transform, with dpr folded in only here. Stored coordinates
@@ -61,14 +100,61 @@ export function createRenderer(
     ctx.drawImage(bitmap, 0, 0)
   }
 
-  function clearLayer(ctx: CanvasRenderingContext2D): void {
+  /**
+   * Prepares a vector layer: clears it, then leaves the transform as a plain
+   * dpr scale so callers draw in CSS pixels. Positions come from imageToScreen,
+   * which is why nothing here compensates for zoom.
+   */
+  function prepareVectorLayer(ctx: CanvasRenderingContext2D): void {
     const dpr = layers.getDpr()
     const { width, height } = layers.getSize()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, width * dpr, height * dpr)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
-  function frame(onFrame: () => void): void {
+  function labelColor(document: ReadonlyDocument, labelId: string): string {
+    return document.labels.find((l) => l.id === labelId)?.color ?? FALLBACK_COLOR
+  }
+
+  function drawAnnotationsLayer(): void {
+    const ctx = layers.ctx.annotations
+    prepareVectorLayer(ctx)
+
+    const document = scene.getDocument()
+    const viewport = scene.getViewport()
+    const selectedId = scene.getSession().selectedAnnotationId
+    // Suppressed because a tool is drawing a live version of it on the overlay.
+    const hidden = scene.getActiveTool()?.hiddenAnnotationId() ?? null
+
+    for (const annotation of document.annotations) {
+      if (annotation.id === hidden) continue
+      if (annotation.type !== 'bbox') continue // polygon lands in a later phase
+      drawBox(
+        ctx,
+        bboxToScreen(annotation.geometry, viewport),
+        labelColor(document, annotation.labelId),
+        { selected: annotation.id === selectedId },
+      )
+    }
+  }
+
+  function drawOverlayLayer(): void {
+    const ctx = layers.ctx.overlay
+    prepareVectorLayer(ctx)
+    scene.getActiveTool()?.drawOverlay(ctx, {
+      viewport: scene.getViewport(),
+      document: scene.getDocument(),
+      session: scene.getSession(),
+    })
+  }
+
+  function frame(timestamp: number, onFrame: () => void): void {
+    // The interval between consecutive rAF callbacks. The browser hands us the
+    // frame timestamp, so this is measured, not estimated.
+    if (lastTimestamp !== 0) pushSample(frameIntervals, timestamp - lastTimestamp)
+    lastTimestamp = timestamp
+
     // A resize changes every backing store, so everything must be repainted.
     if (layers.sync()) markAllDirty()
 
@@ -80,37 +166,32 @@ export function createRenderer(
       dirty.image = false
       drew = true
     }
-    // These two are intentionally empty this phase. The plumbing is exercised
-    // so that adding tools later is a draw call, not a refactor.
     if (dirty.annotations) {
-      clearLayer(layers.ctx.annotations)
+      drawAnnotationsLayer()
       dirty.annotations = false
       drew = true
     }
     if (dirty.overlay) {
-      clearLayer(layers.ctx.overlay)
+      drawOverlayLayer()
       dirty.overlay = false
       drew = true
     }
 
-    if (drew) {
-      const elapsed = performance.now() - drawStart
-      // Exponential moving average, so the readout is legible instead of jittery.
-      frameMs = frameMs === 0 ? elapsed : frameMs * 0.85 + elapsed * 0.15
-    }
+    if (drew) pushSample(drawTimes, performance.now() - drawStart)
 
     onFrame()
-    requestAnimationFrame(() => frame(onFrame))
+    requestAnimationFrame((next) => frame(next, onFrame))
   }
 
   return {
     markDirty,
     markAllDirty,
-    getFrameMs: () => frameMs,
+    getFrameIntervalMs: () => median(frameIntervals),
+    getDrawMs: () => median(drawTimes),
     start(onFrame: () => void): void {
       if (started) return
       started = true
-      requestAnimationFrame(() => frame(onFrame))
+      requestAnimationFrame((timestamp) => frame(timestamp, onFrame))
     },
   }
 }

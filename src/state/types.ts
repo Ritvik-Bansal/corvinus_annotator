@@ -185,7 +185,7 @@ export interface Viewport {
   offsetY: number
 }
 
-export type ToolId = 'select' | 'bbox' | 'polygon' | 'brush' | 'erase'
+export type ToolId = 'select' | 'bbox' | 'polygon' | 'brush' | 'erase' | 'pan'
 
 export interface SessionState {
   viewport: Viewport
@@ -215,3 +215,13 @@ export type DeepReadonly<T> = T extends (infer U)[]
     : T
 
 export type ReadonlyDocument = DeepReadonly<AnnotationDocument>
+
+/**
+ * structuredClone always returns a fresh, fully mutable object — only the
+ * static type carries the input's readonly-ness. This is the single sanctioned
+ * place that cast happens, so it can be found by grepping for one word.
+ * Call with an explicit type argument: thaw<Label[]>(doc.labels).
+ */
+export function thaw<T>(value: DeepReadonly<T>): T {
+  return structuredClone(value) as T
+}
