@@ -1,5 +1,5 @@
 import { createEmptyDocument, createInitialSession } from './defaults.ts'
-import type { AnnotationDocument, SessionState } from './types.ts'
+import type { AnnotationDocument, ReadonlyDocument, SessionState } from './types.ts'
 
 /** How many document snapshots to keep. Oldest is dropped past this. */
 const UNDO_LIMIT = 40
@@ -43,10 +43,11 @@ export function createStore(
 
   return {
     /**
-     * The live document. Treat as read-only: every write goes through commit().
-     * Also don't cache this across a commit — undo/redo swap the object.
+     * The live document, typed so the compiler rejects direct mutation.
+     * Every write goes through commit(). Don't cache this across a commit —
+     * undo/redo swap the object.
      */
-    getDocument: (): AnnotationDocument => doc,
+    getDocument: (): ReadonlyDocument => doc,
 
     getSession: (): SessionState => session,
 

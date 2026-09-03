@@ -194,3 +194,24 @@ export interface SessionState {
   brushRadius: number
   selectedAnnotationId: string | null
 }
+
+// ---------------------------------------------------------------------------
+// READ-ONLY VIEW — what the store hands out to readers.
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursively marks every field and every array as readonly.
+ * - `T extends (infer U)[]` means "if T is an array, call its element type U".
+ * - The conditional distributes over unions automatically, so a discriminated
+ *   union like Stroke stays a union of two readonly shapes and narrowing on
+ *   `.mode` still works.
+ * - `{ readonly [K in keyof T]: ... }` is a "mapped type": rebuild T field by
+ *   field, adding readonly to each.
+ */
+export type DeepReadonly<T> = T extends (infer U)[]
+  ? readonly DeepReadonly<U>[]
+  : T extends object
+    ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+    : T
+
+export type ReadonlyDocument = DeepReadonly<AnnotationDocument>

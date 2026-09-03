@@ -4,7 +4,7 @@
 
 import { createStore } from './store.ts'
 import { createEmptyDocument, createId } from './defaults.ts'
-import type { AnnotationDocument, BboxAnnotation, EraseStroke, PaintStroke } from './types.ts'
+import type { BboxAnnotation, EraseStroke, PaintStroke, ReadonlyDocument } from './types.ts'
 
 let failures = 0
 
@@ -19,7 +19,7 @@ function check(label: string, condition: boolean): void {
 
 // Deep compare via JSON. Key order is deterministic here because every document
 // in a lineage is built by the same code path, so this is a valid identity test.
-function same(a: AnnotationDocument, b: AnnotationDocument): boolean {
+function same(a: ReadonlyDocument, b: ReadonlyDocument): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
