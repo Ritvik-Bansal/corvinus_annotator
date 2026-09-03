@@ -85,7 +85,7 @@ the right panel should roughly be 300px with three sections stacked which are cl
 
 --------------
 
-here r a few things before we start the next phase. the add class dialog needs some fixing as right now its two dialoges and if i typo a type like "bollean" it auto turns into a text field w no warning/error so lets replace it w an inline form in the classes section itself. it should hv a name field, color, and way to add attributes. each attribute row would be a name field plus a type dropdown. if the type is enum have one more field for its options.
+[8] here r a few things before we start the next phase. the add class dialog needs some fixing as right now its two dialoges and if i typo a type like "bollean" it auto turns into a text field w no warning/error so lets replace it w an inline form in the classes section itself. it should hv a name field, color, and way to add attributes. each attribute row would be a name field plus a type dropdown. if the type is enum have one more field for its options.
 
 also i need to have a delete class feature. have a small x on the row and if the class is in use tell me how many annotations use it and let me confirm cuz that will delete annotations as well - make sure this option can be undone.
 
@@ -94,3 +94,7 @@ on the visual side lets dial it back - right now theres a purple accent on the b
 then phase 4 which is the polygon tool. i want the polygon to be enabled in the left sidebar. we should be able to click to place each vertex and in progress shape draws on the overlay with a simple line that follows the users cursor, enter or clicking the first vertex shoud close it and hitting escape cancels the whole thing, and finally the select tool should be able to work on it aswell so like click to select and drag to move the whole shape and also being able ot drag a vertex to move just that vertex and change the polygon itself.
 
 make sure u dont add stuff i didnt ask for
+
+
+
+[9] the create class dialouge should only pop up if the "add new class button" is first hit and then upon creation of the class, the box should go away. currently the create class box is always there, whether or not hte user wants to create a class in the first place. please make this fix.
