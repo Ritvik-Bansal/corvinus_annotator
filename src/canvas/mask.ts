@@ -73,6 +73,13 @@ export function createMask(): Mask {
 
   /** Ids currently drawn on the canvas, in order. The cache key. */
   let renderedIds: string[] = []
+  /**
+   * Whether anything is currently painted on the canvas. Tracked directly rather
+   * than inferred from renderedIds, because live segments drawn mid-drag never
+   * enter that list — inferring it meant the very first stroke stayed invisible
+   * until release, and again after undoing back to zero strokes.
+   */
+  let hasPixels = false
   let classBounds: ReadonlyMap<string, MaskBounds> = new Map()
   let width = 0
   let height = 0
@@ -85,6 +92,7 @@ export function createMask(): Mask {
     canvas.width = Math.max(1, nextWidth)
     canvas.height = Math.max(1, nextHeight)
     renderedIds = []
+    hasPixels = false
   }
 
   function begin(mode: 'paint' | 'erase', color: string, radius: number): void {
@@ -102,6 +110,7 @@ export function createMask(): Mask {
 
   function drawStroke(stroke: ReadonlyStroke, color: string): void {
     if (stroke.points.length === 0) return
+    hasPixels = true
     ctx.save()
     begin(stroke.mode, color, stroke.radius)
     if (stroke.points.length === 1) {
@@ -157,6 +166,7 @@ export function createMask(): Mask {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.restore()
         renderedIds = []
+        hasPixels = false
       }
 
       for (let i = renderedIds.length; i < strokes.length; i += 1) {
@@ -171,6 +181,9 @@ export function createMask(): Mask {
     getClassBounds: () => classBounds,
 
     drawSegment(mode, color, radius, from, to): void {
+      // Erasing removes coverage, but the canvas is still "in use" either way;
+      // the guard exists to skip a pointless blit of an untouched canvas.
+      hasPixels = true
       ctx.save()
       begin(mode, color, radius)
       ctx.beginPath()
@@ -182,12 +195,13 @@ export function createMask(): Mask {
 
     invalidate(): void {
       renderedIds = []
+      hasPixels = false
       ctx.save()
       ctx.globalCompositeOperation = 'source-over'
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.restore()
     },
 
-    hasContent: () => renderedIds.length > 0,
+    hasContent: () => hasPixels,
   }
 }
