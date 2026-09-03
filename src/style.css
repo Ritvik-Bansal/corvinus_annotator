@@ -1,0 +1,95 @@
+/* Must match CANVAS_BACKGROUND in src/canvas/layers.ts. */
+:root {
+  --canvas-bg: #14161a;
+  --chrome-bg: #1c1f24;
+  --chrome-border: #2c3038;
+  --text: #d8dce3;
+  --text-dim: #8b93a1;
+  --accent: #4c8dff;
+  --error: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* the canvas fills the window; the page itself never scrolls */
+  background: var(--canvas-bg);
+  color: var(--text);
+  font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: 44px 1fr 28px; /* top bar, canvas, status bar */
+  height: 100%;
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+#open-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 50%;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+#open-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#image-name {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+#image-name.is-error {
+  color: var(--error);
+}
+
+#canvas-area {
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none; /* we handle pointer gestures ourselves */
+}
+
+#canvas-area.is-panning {
+  cursor: grabbing;
+}
+
+#canvas-area canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 12px;
+  background: var(--chrome-bg);
+  border-top: 1px solid var(--chrome-border);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums; /* digits stop jittering as values change */
+}

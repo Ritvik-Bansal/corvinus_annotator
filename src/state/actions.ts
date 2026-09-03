@@ -12,6 +12,7 @@ import type {
   AttributeValue,
   AttributeValues,
   BboxGeometry,
+  ImageMeta,
   Label,
   Point,
   PolygonGeometry,
@@ -251,6 +252,17 @@ export function createActions(store: Store) {
         if (patch.attributes !== undefined) label.attributes = structuredClone(patch.attributes)
       })
       return true
+    },
+
+    /**
+     * Records which image is open. Goes through commit() like everything else.
+     * The decoded ImageBitmap is NOT stored here — it is not serializable and
+     * has no business in an exported document.
+     */
+    setImage(image: ImageMeta): void {
+      store.commit((draft) => {
+        draft.image = { ...image }
+      })
     },
 
     /**
