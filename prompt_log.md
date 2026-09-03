@@ -66,7 +66,7 @@ remember no annotation tools, no drawing, no sidebar yet
 
 --------------
 
-three fixes first then phase 2.
+[6] three fixes first then phase 2.
 
 FIXES:
 1. two-finger scroll pans, pinch zooms branch on event ctrlKey
@@ -75,3 +75,10 @@ FIXES:
 
 phase 2 is tool rail and the rectangle tool. I wannt a working tool rail, and the ability to draw, select, move and resize bounding boxes. i need a tool interface so every tool is an object. all pointer events route through one place that dispatches to the active tool. build this structure  as it will be important later for the polygon and brush tools. the left rail with six icons - select V, rectangle R, polygon P, brush B, eraser E, pan H. polygon, brush and eraser are visible but disabled for this phase. keyboard shortcuts work. the rectangle tool is drag to create. the box is stored in image coordinates. the select tool is click a shape to select it, drag to move it, drag corner handles to resize. the delete key removes the selected shape. annotations draw on the annotations layer, and have an annotation count in the status bar.
 
+--------------
+
+[7] one small fix then phase 3. change the draw timing display to microseconds. 0.00 ms looks broken..
+
+phase 3 is the sidebar, labels and attributes. we essentialy need to make the right panel, pick a class before drawing, see all annotations, and be able to edit the attributes of whatever is selected.
+
+the right panel should roughly be 300px with three sections stacked which are classes, annotations and attributes. i need the classes list which are the three seed labels with their color swatches (blue for reagent, green for pipette, and red for microplate). clicking one should set the label. make it so that the number keys 1-9 do the same. we also need to add an "add new class" button that asks for a name and picks a color. create an annotations list for every annotation with its type and class. clicking one selects/shows it on the canvas. selecting on the canvas higlights it in list. also need a attributes section which will show the attribute fields for whatever is selected. number type renders a number input, enum renders a dropdown, boolean renders a checkbox, etc. editing updated the annotation. make sure that the boxes use thier class color and have a class label on top.
