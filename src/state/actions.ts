@@ -3,6 +3,8 @@
 // visible change is undoable and validated in exactly one place.
 
 import { createId } from './defaults.ts'
+import { normalizeBbox } from './geometry.ts'
+import { DOCUMENT_VERSION, thaw } from './types.ts'
 import { store as sharedStore } from './store.ts'
 import type { Store } from './store.ts'
 import type {
@@ -54,16 +56,6 @@ export type RemoveLabelResult =
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Dragging up or left yields negative width/height; store the top-left form. */
-function normalizeBbox(g: BboxGeometry): BboxGeometry {
-  return {
-    x: g.width < 0 ? g.x + g.width : g.x,
-    y: g.height < 0 ? g.y + g.height : g.y,
-    width: Math.abs(g.width),
-    height: Math.abs(g.height),
-  }
-}
 
 /**
  * `g is BboxGeometry` is a "type predicate": returning true tells TypeScript the
@@ -252,6 +244,27 @@ export function createActions(store: Store) {
         if (patch.attributes !== undefined) label.attributes = structuredClone(patch.attributes)
       })
       return true
+    },
+
+    /**
+     * Opens a new image. Clears annotations and strokes and DISCARDS undo
+     * history, so nothing from the previous image can leak onto this one.
+     *
+     * Labels are deliberately carried over: a label set is a taxonomy, not
+     * per-image data, and silently dropping classes the user created would be
+     * data loss. Swap the `thaw` line for createEmptyDocument().labels to make
+     * this a total reset instead.
+     */
+    openImage(image: ImageMeta): void {
+      const previous = store.getDocument()
+      store.reset({
+        version: DOCUMENT_VERSION,
+        exportedAt: new Date().toISOString(),
+        image: { ...image },
+        labels: thaw<Label[]>(previous.labels),
+        annotations: [],
+        strokes: [],
+      })
     },
 
     /**

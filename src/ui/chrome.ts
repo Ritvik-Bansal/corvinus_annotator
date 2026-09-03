@@ -46,20 +46,35 @@ export function createTopBar(
 }
 
 export interface StatusBar {
-  update(viewport: Viewport, cursor: Point | null, frameMs: number): void
+  update(count: number, viewport: Viewport, cursor: Point | null, timing: FrameTiming): void
+}
+
+export interface FrameTiming {
+  /** Real end-to-end cost: median gap between animation frames. */
+  intervalMs: number
+  /** Our draw code only, excluding GPU work. A fraction of the interval. */
+  drawMs: number
 }
 
 export function createStatusBar(
+  countEl: HTMLElement,
   zoomEl: HTMLElement,
   cursorEl: HTMLElement,
   frameEl: HTMLElement,
 ): StatusBar {
+  let lastCount = ''
   let lastZoom = ''
   let lastCursor = ''
   let lastFrame = ''
 
   return {
-    update(viewport: Viewport, cursor: Point | null, frameMs: number): void {
+    update(count: number, viewport: Viewport, cursor: Point | null, timing: FrameTiming): void {
+      const countText = `${count} annotation${count === 1 ? '' : 's'}`
+      if (countText !== lastCount) {
+        lastCount = countText
+        countEl.textContent = countText
+      }
+
       const zoom = `Zoom: ${formatZoom(viewport.scale)}`
       if (zoom !== lastZoom) {
         lastZoom = zoom
@@ -75,7 +90,9 @@ export function createStatusBar(
         cursorEl.textContent = position
       }
 
-      const frame = `${frameMs.toFixed(2)} ms/frame`
+      // Two numbers, because one alone lies. The interval is what the user
+      // feels; the draw time is what our code is responsible for.
+      const frame = `${timing.intervalMs.toFixed(1)} ms/frame  ·  ${timing.drawMs.toFixed(2)} ms draw`
       if (frame !== lastFrame) {
         lastFrame = frame
         frameEl.textContent = frame

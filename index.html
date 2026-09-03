@@ -16,6 +16,33 @@
         <span id="image-name">No image loaded</span>
       </header>
 
+      <nav id="toolrail">
+        <button data-tool="select" title="Select (V)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.2v9.9l2.6-2.5 1.8 3.8 1.9-.9-1.8-3.7 3.5-.2z"/></svg>
+          <kbd>V</kbd>
+        </button>
+        <button data-tool="bbox" title="Rectangle (R)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8"/></svg>
+          <kbd>R</kbd>
+        </button>
+        <button data-tool="polygon" title="Polygon (P) - not yet implemented">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 13.5 6.5 11.5 13 4.5 13 2.5 6.5Z"/></svg>
+          <kbd>P</kbd>
+        </button>
+        <button data-tool="brush" title="Brush (B) - not yet implemented">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 5.5 10.5M6.2 10.2 11.5 4.5 13 6 7.7 11.7Z"/></svg>
+          <kbd>B</kbd>
+        </button>
+        <button data-tool="erase" title="Eraser (E) - not yet implemented">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 3 13 7 8.5 11.5 4.5 11.5 2.8 9.8Z"/></svg>
+          <kbd>E</kbd>
+        </button>
+        <button data-tool="pan" title="Pan (H)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 9.5V5a1 1 0 0 1 2 0v3.5M7.5 8.5V3.8a1 1 0 0 1 2 0v4.7M9.5 8.5V5a1 1 0 0 1 2 0v5c0 2.2-1.6 3.6-3.8 3.6S4 12.2 4 10V8.4a1 1 0 0 1 1.5-.5"/></svg>
+          <kbd>H</kbd>
+        </button>
+      </nav>
+
       <!-- Three canvases stacked in one positioned container. Same CSS box,
            same coordinate space, independently repaintable. -->
       <div id="canvas-area">
@@ -25,9 +52,10 @@
       </div>
 
       <footer id="statusbar">
+        <span id="status-count">0 annotations</span>
         <span id="status-zoom">Zoom: -</span>
         <span id="status-cursor">X: -   Y: -</span>
-        <span id="status-frame">0.00 ms/frame</span>
+        <span id="status-frame">0.0 ms/frame &middot; 0.00 ms draw</span>
       </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>
