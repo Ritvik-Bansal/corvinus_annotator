@@ -13,3 +13,19 @@ I want a recommend a stack, framework or no framework, language, build tool, and
 
 i already have my own plan and i'm going to compare your output against it.
 
+--------------
+
+[2] i want the languges we use to be typescript + vite, no framework, plain canvas 2d, hand-rolled state.
+
+also here are two additions i decided on after reading your answer: masks are stroke lists in memory, but export ALSO emits an RLE raster mask per class along with the strokes, so the json is still usable. also the eraser removes pixels from every class, not just the active selected one.
+
+right now i only want phase 0 which is gonna be scaffold and deploy. no app code yet.
+
+goal:
+a working vite and typescript project that builds and is live on a public url.
+
+what i want: exact terminal commands to scaffold, one at a time. add a one-line explanation of what each does. i'm on macos, zsh, node already installed. i also want the folder structure you'd set up for this project and why each folder exists. i want what goes in vite.config.ts and index.html, and why. give me deploy instructions. i want it live on a public url asap. for example tell me github pages vs netlify vs vercel and pick one for this situation then give me the steps
+
+constraints: i dont want any dependencies other than vite and typescript unless you tell me why first. for now, no app logic, no canvas code, nothing about annotation yet. NOTE: i am new to typescript so when you use syntax that isn't easy to understand, add a simple one lined comment explaining it
+
+after the commands tell me exactly what i should see on screen if it worked
