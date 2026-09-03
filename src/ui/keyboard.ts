@@ -21,6 +21,8 @@ export interface KeyboardDeps {
   redo(): void
   cancelGesture(): void
   commitGesture(): void
+  /** Negative shrinks, positive grows. Only meaningful for brush and eraser. */
+  adjustBrush(direction: -1 | 1): void
 }
 
 export function createKeyboard(deps: KeyboardDeps): void {
@@ -59,6 +61,12 @@ export function createKeyboard(deps: KeyboardDeps): void {
     if (event.key === 'Enter') {
       event.preventDefault()
       deps.commitGesture()
+      return
+    }
+
+    if (event.key === '[' || event.key === ']') {
+      event.preventDefault()
+      deps.adjustBrush(event.key === '[' ? -1 : 1)
       return
     }
 

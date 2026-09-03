@@ -13,11 +13,13 @@ import {
   polygonToScreen,
   screenBounds,
 } from './draw.ts'
+import { MASK_OPACITY, type Mask } from './mask.ts'
 import type { Tool } from '../tools/types.ts'
 import type { ReadonlyDocument, SessionState, Viewport } from '../state/types.ts'
 
 /** Everything the renderer needs to read. It pulls; nothing pushes to it. */
 export interface Scene {
+  getMask(): Mask
   getBitmap(): ImageBitmap | null
   getViewport(): Viewport
   getDocument(): ReadonlyDocument
@@ -126,6 +128,22 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
 
     const document = scene.getDocument()
     const viewport = scene.getViewport()
+
+    // The mask goes down first so boxes and polygons read on top of it. It is
+    // an image-space bitmap, so it is blitted through the viewport transform
+    // exactly like the photo, then the transform is restored to screen space.
+    const mask = scene.getMask()
+    mask.sync(document)
+    if (mask.hasContent()) {
+      ctx.save()
+      const dpr = layers.getDpr()
+      const s = viewport.scale * dpr
+      ctx.setTransform(s, 0, 0, s, viewport.offsetX * dpr, viewport.offsetY * dpr)
+      ctx.globalAlpha = MASK_OPACITY
+      ctx.imageSmoothingEnabled = viewport.scale < 1
+      ctx.drawImage(mask.canvas, 0, 0)
+      ctx.restore()
+    }
     const selectedId = scene.getSession().selectedAnnotationId
     // Suppressed because a tool is drawing a live version of it on the overlay.
     const hidden = scene.getActiveTool()?.hiddenAnnotationId() ?? null

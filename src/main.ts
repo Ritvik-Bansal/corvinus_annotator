@@ -6,11 +6,12 @@ import { actions } from './state/actions.ts'
 import { store } from './state/store.ts'
 import { createInteractions } from './canvas/interactions.ts'
 import { createLayers } from './canvas/layers.ts'
+import { createMask } from './canvas/mask.ts'
 import { createRenderer } from './canvas/renderer.ts'
 import { loadImageFile } from './canvas/image.ts'
 import { fitToViewport } from './canvas/viewport.ts'
 import { createTools } from './tools/index.ts'
-import { createStatusBar, createTopBar } from './ui/chrome.ts'
+import { createBrushControl, createStatusBar, createTopBar } from './ui/chrome.ts'
 import { downloadText, readTextFile } from './io/file.ts'
 import { exportFileName, parseDocument, serializeDocument } from './io/json.ts'
 import { createKeyboard } from './ui/keyboard.ts'
@@ -40,6 +41,17 @@ let bitmap: ImageBitmap | null = null
 
 const FALLBACK_COLOR = '#8b93a1'
 
+// The one image-sized buffer the brush adds. Strokes remain the source of
+// truth; this is a cache replayed from them and safe to throw away.
+const mask = createMask()
+
+const MIN_BRUSH = 1
+const MAX_BRUSH = 300
+
+function labelColor(labelId: string): string {
+  return store.getDocument().labels.find((l) => l.id === labelId)?.color ?? FALLBACK_COLOR
+}
+
 // Tools reach the store only through these — never through commit() — so undo
 // covers every shape change by construction.
 const tools = createTools({
@@ -49,8 +61,15 @@ const tools = createTools({
   addPolygon: (labelId, geometry) => actions.addAnnotation({ type: 'polygon', labelId, geometry }),
   updateGeometry: (id, geometry) => actions.updateAnnotationGeometry(id, geometry),
   getActiveLabelId: () => store.getSession().activeLabelId,
-  labelColor: (labelId) =>
-    store.getDocument().labels.find((l) => l.id === labelId)?.color ?? FALLBACK_COLOR,
+  labelColor,
+  // A brush stroke is one action, so a whole drag is one undo entry.
+  addStroke: (mode, labelId, radius, points) =>
+    mode === 'paint'
+      ? actions.addStroke({ mode: 'paint', labelId, radius, points })
+      : actions.addStroke({ mode: 'erase', radius, points }),
+  // The mask draws on the annotations layer, so live painting must dirty it.
+  markAnnotationsDirty: () => renderer.markDirty('annotations'),
+  mask,
 })
 
 function activeTool(): Tool | null {
@@ -65,6 +84,7 @@ function setTool(id: ToolId): void {
 }
 
 const renderer = createRenderer(layers, {
+  getMask: () => mask,
   getBitmap: () => bitmap,
   getViewport: () => store.getSession().viewport,
   getDocument: () => store.getDocument(),
@@ -110,8 +130,22 @@ const sidebar = createSidebar(
 
 const canvasEmpty = need<HTMLElement>('#canvas-empty')
 
+const brushControl = createBrushControl(
+  need<HTMLElement>('#brush-size'),
+  need<HTMLInputElement>('#brush-size-input'),
+  need<HTMLElement>('#brush-size-value'),
+  (brushRadius) => store.setSession({ brushRadius }),
+)
+
 createKeyboard({
   setTool,
+  adjustBrush: (direction) => {
+    const current = store.getSession().brushRadius
+    // Proportional step, so [ and ] feel the same at 4px and at 200px.
+    const step = Math.max(1, Math.round(current * 0.15))
+    const next = Math.min(MAX_BRUSH, Math.max(MIN_BRUSH, current + direction * step))
+    store.setSession({ brushRadius: next })
+  },
   setActiveLabelByPosition: (position) => {
     const label = store.getDocument().labels[position - 1]
     if (label !== undefined) store.setSession({ activeLabelId: label.id })
@@ -173,6 +207,9 @@ async function handleImport(file: File): Promise<void> {
     return
   }
   actions.replaceDocument(result.document)
+  // Imported strokes are a wholesale replacement, so replay from scratch.
+  mask.invalidate()
+  renderer.markDirty('annotations')
   const count = result.document.annotations.length
   topBar.showMessage(`Imported ${count} annotation${count === 1 ? '' : 's'} from ${file.name}`, false)
 }
@@ -184,6 +221,7 @@ store.subscribe((kind) => {
     // Viewport moved, tool changed or selection changed: every layer is stale.
     renderer.markAllDirty()
     rail.update(store.getSession().activeTool)
+    brushControl.update(store.getSession().activeTool, store.getSession().brushRadius)
   } else {
     renderer.markDirty('annotations', 'overlay')
     topBar.update(store.getDocument().image)
@@ -212,6 +250,8 @@ async function handleFile(file: File): Promise<void> {
 
     // Resets the document and clears undo history (see actions.openImage).
     actions.openImage({ fileName: file.name, width: next.width, height: next.height })
+    // A different image means a differently sized mask and no strokes.
+    mask.setImageSize(next.width, next.height)
     topBar.showMessage('', false)
     store.setSession({
       viewport: fitToViewport(next, layers.getSize()),
@@ -226,5 +266,6 @@ async function handleFile(file: File): Promise<void> {
 topBar.update(store.getDocument().image)
 rail.update(store.getSession().activeTool)
 sidebar.renderAll()
+brushControl.update(store.getSession().activeTool, store.getSession().brushRadius)
 canvasEmpty.hidden = store.getDocument().image.fileName !== ''
 canvasArea.style.cursor = activeTool()?.cursor ?? 'default'

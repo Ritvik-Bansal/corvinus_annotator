@@ -4,7 +4,7 @@
 // bar is updated once per animation frame, so without that guard a pan would
 // write to the DOM 60 times a second for no visible difference.
 
-import type { ImageMeta, Point, Viewport } from '../state/types.ts'
+import type { ImageMeta, Point, ToolId, Viewport } from '../state/types.ts'
 
 export interface TopBar {
   update(image: ImageMeta): void
@@ -48,6 +48,32 @@ export function createTopBar(
     showMessage(message: string, isError: boolean): void {
       messageEl.textContent = message
       messageEl.classList.toggle('is-error', isError)
+    },
+  }
+}
+
+/** Brush size control. Only shown while the brush or eraser is the active tool. */
+export interface BrushControl {
+  update(activeTool: ToolId, radius: number): void
+}
+
+export function createBrushControl(
+  wrapper: HTMLElement,
+  slider: HTMLInputElement,
+  valueEl: HTMLElement,
+  onChange: (radius: number) => void,
+): BrushControl {
+  slider.addEventListener('input', () => onChange(Number(slider.value)))
+  let lastText = ''
+  return {
+    update(activeTool: ToolId, radius: number): void {
+      wrapper.hidden = activeTool !== 'brush' && activeTool !== 'erase'
+      if (String(radius) !== slider.value) slider.value = String(radius)
+      const text = `${radius} px`
+      if (text !== lastText) {
+        lastText = text
+        valueEl.textContent = text
+      }
     },
   }
 }

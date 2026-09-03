@@ -84,6 +84,24 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+#brush-size {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-dim);
+}
+
+#brush-size input[type='range'] {
+  width: 110px;
+  accent-color: var(--text-dim);
+}
+
+#brush-size output {
+  min-width: 46px; /* stops the bar jittering as the number changes width */
+  font-variant-numeric: tabular-nums;
+}
+
 #io-message {
   flex: 1; /* takes the slack, pushing the buttons to the right */
   overflow: hidden;
