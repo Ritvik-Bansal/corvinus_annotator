@@ -82,3 +82,15 @@ phase 2 is tool rail and the rectangle tool. I wannt a working tool rail, and th
 phase 3 is the sidebar, labels and attributes. we essentialy need to make the right panel, pick a class before drawing, see all annotations, and be able to edit the attributes of whatever is selected.
 
 the right panel should roughly be 300px with three sections stacked which are classes, annotations and attributes. i need the classes list which are the three seed labels with their color swatches (blue for reagent, green for pipette, and red for microplate). clicking one should set the label. make it so that the number keys 1-9 do the same. we also need to add an "add new class" button that asks for a name and picks a color. create an annotations list for every annotation with its type and class. clicking one selects/shows it on the canvas. selecting on the canvas higlights it in list. also need a attributes section which will show the attribute fields for whatever is selected. number type renders a number input, enum renders a dropdown, boolean renders a checkbox, etc. editing updated the annotation. make sure that the boxes use thier class color and have a class label on top.
+
+--------------
+
+here r a few things before we start the next phase. the add class dialog needs some fixing as right now its two dialoges and if i typo a type like "bollean" it auto turns into a text field w no warning/error so lets replace it w an inline form in the classes section itself. it should hv a name field, color, and way to add attributes. each attribute row would be a name field plus a type dropdown. if the type is enum have one more field for its options.
+
+also i need to have a delete class feature. have a small x on the row and if the class is in use tell me how many annotations use it and let me confirm cuz that will delete annotations as well - make sure this option can be undone.
+
+on the visual side lets dial it back - right now theres a purple accent on the buttons and selected row plus class colors are pastels. we wil be going plain. greys and pitch blacks for chromes, no accent colors except a thin border on selected items. for the three classes use straight saturated colors.
+
+then phase 4 which is the polygon tool. i want the polygon to be enabled in the left sidebar. we should be able to click to place each vertex and in progress shape draws on the overlay with a simple line that follows the users cursor, enter or clicking the first vertex shoud close it and hitting escape cancels the whole thing, and finally the select tool should be able to work on it aswell so like click to select and drag to move the whole shape and also being able ot drag a vertex to move just that vertex and change the polygon itself.
+
+make sure u dont add stuff i didnt ask for
