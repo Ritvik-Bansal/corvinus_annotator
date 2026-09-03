@@ -1,0 +1,40 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # lets you re-run manually from the Actions tab
+
+permissions:
+  contents: read
+  pages: write                # allow this job to publish to Pages
+  id-token: write             # required for the deploy action's OIDC auth
+
+concurrency:
+  group: pages
+  cancel-in-progress: true    # a newer push supersedes an in-flight deploy
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm          # caches ~/.npm so later runs install faster
+      - run: npm ci           # installs exactly from package-lock.json
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build              # only runs if build succeeded
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
