@@ -9,11 +9,14 @@ import type { ImageMeta, Point, Viewport } from '../state/types.ts'
 export interface TopBar {
   update(image: ImageMeta): void
   showError(message: string): void
+  /** Import/export feedback, shown separately so it never eats the file name. */
+  showMessage(message: string, isError: boolean): void
 }
 
 export function createTopBar(
   fileInput: HTMLInputElement,
   nameEl: HTMLElement,
+  messageEl: HTMLElement,
   onFile: (file: File) => void,
 ): TopBar {
   fileInput.addEventListener('change', () => {
@@ -41,6 +44,10 @@ export function createTopBar(
       lastText = message
       nameEl.textContent = message
       nameEl.classList.add('is-error')
+    },
+    showMessage(message: string, isError: boolean): void {
+      messageEl.textContent = message
+      messageEl.classList.toggle('is-error', isError)
     },
   }
 }

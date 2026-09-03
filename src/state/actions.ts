@@ -106,13 +106,32 @@ export function createActions(store: Store) {
           ...defaultAttributeValues(label), // label defaults first...
           ...input.attributes, // ...explicit values from the caller win
         }
-        const base = { id, labelId: input.labelId, attributes, createdAt: now, updatedAt: now }
         // Each branch is built whole. Assigning `type` and `geometry` separately
         // would break the union — TypeScript could no longer prove they agree.
+        //
+        // Field order matches the documented file format on purpose, so the
+        // in-memory object and the exported JSON have the same shape key for
+        // key. That is what lets a round trip be compared by plain equality.
         draft.annotations.push(
           input.type === 'bbox'
-            ? { ...base, type: 'bbox', geometry: normalizeBbox(input.geometry) }
-            : { ...base, type: 'polygon', geometry: { points: [...input.geometry.points] } },
+            ? {
+                id,
+                type: 'bbox',
+                labelId: input.labelId,
+                attributes,
+                geometry: normalizeBbox(input.geometry),
+                createdAt: now,
+                updatedAt: now,
+              }
+            : {
+                id,
+                type: 'polygon',
+                labelId: input.labelId,
+                attributes,
+                geometry: { points: input.geometry.points.map((p) => ({ x: p.x, y: p.y })) },
+                createdAt: now,
+                updatedAt: now,
+              },
         )
       })
       return id
@@ -279,20 +298,14 @@ export function createActions(store: Store) {
     },
 
     /**
-     * Swaps the entire document. Import will call this. It goes through commit(),
-     * so importing the wrong file is one Ctrl+Z away. Validation of untrusted JSON
-     * belongs in io/, not here.
+     * Swaps the entire document. Import calls this.
+     *
+     * DISCARDS undo history, exactly like opening an image: the previous
+     * document's annotations must not be reachable with Ctrl+Z once a different
+     * file is open. Validating untrusted JSON is io/'s job, not this one's.
      */
     replaceDocument(next: AnnotationDocument): void {
-      const incoming = structuredClone(next) // don't alias the caller's object
-      store.commit((draft) => {
-        draft.version = incoming.version
-        draft.exportedAt = incoming.exportedAt
-        draft.image = incoming.image
-        draft.labels = incoming.labels
-        draft.annotations = incoming.annotations
-        draft.strokes = incoming.strokes
-      })
+      store.reset(structuredClone(next)) // clone so we don't alias the caller
       // Session may still point at things that no longer exist.
       const labels = store.getDocument().labels
       const active = store.getSession().activeLabelId

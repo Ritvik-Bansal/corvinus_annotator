@@ -84,6 +84,35 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+#io-message {
+  flex: 1; /* takes the slack, pushing the buttons to the right */
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#io-message.is-error {
+  color: var(--error);
+  white-space: normal;
+}
+
+#topbar button {
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 5px;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+}
+
+#topbar button:hover {
+  border-color: var(--selected);
+  color: var(--text);
+}
+
 #image-name.is-error {
   color: var(--error);
 }

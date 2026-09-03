@@ -11,6 +11,8 @@ import { loadImageFile } from './canvas/image.ts'
 import { fitToViewport } from './canvas/viewport.ts'
 import { createTools } from './tools/index.ts'
 import { createStatusBar, createTopBar } from './ui/chrome.ts'
+import { downloadText, readTextFile } from './io/file.ts'
+import { exportFileName, parseDocument, serializeDocument } from './io/json.ts'
 import { createKeyboard } from './ui/keyboard.ts'
 import { createRail } from './ui/rail.ts'
 import { createSidebar } from './ui/sidebar.ts'
@@ -140,8 +142,40 @@ const statusBar = createStatusBar(
 const topBar = createTopBar(
   need<HTMLInputElement>('#file-input'),
   need<HTMLElement>('#image-name'),
+  need<HTMLElement>('#io-message'),
   handleFile,
 )
+
+// --- export / import -------------------------------------------------------
+
+need<HTMLButtonElement>('#export-json').addEventListener('click', () => {
+  const document_ = store.getDocument()
+  downloadText(exportFileName(document_.image.fileName), serializeDocument(document_))
+  topBar.showMessage(`Exported ${exportFileName(document_.image.fileName)}`, false)
+})
+
+const importInput = need<HTMLInputElement>('#import-file')
+need<HTMLButtonElement>('#import-json').addEventListener('click', () => importInput.click())
+
+importInput.addEventListener('change', () => {
+  const file = importInput.files?.[0]
+  importInput.value = '' // so picking the same file twice still fires
+  if (file === undefined) return
+  void handleImport(file)
+})
+
+async function handleImport(file: File): Promise<void> {
+  const text = await readTextFile(file)
+  // Validated against the open image; never rescaled or repaired.
+  const result = parseDocument(text, store.getDocument().image)
+  if (!result.ok) {
+    topBar.showMessage(result.message, true)
+    return
+  }
+  actions.replaceDocument(result.document)
+  const count = result.document.annotations.length
+  topBar.showMessage(`Imported ${count} annotation${count === 1 ? '' : 's'} from ${file.name}`, false)
+}
 
 // The store notification only ever sets flags. Drawing happens exclusively in
 // the animation frame, so a burst of pointer events costs one repaint, not N.
@@ -178,6 +212,7 @@ async function handleFile(file: File): Promise<void> {
 
     // Resets the document and clears undo history (see actions.openImage).
     actions.openImage({ fileName: file.name, width: next.width, height: next.height })
+    topBar.showMessage('', false)
     store.setSession({
       viewport: fitToViewport(next, layers.getSize()),
       selectedAnnotationId: null,

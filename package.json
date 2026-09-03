@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "check": "node src/state/store.check.ts && node src/state/actions.check.ts && node src/canvas/viewport.check.ts && node src/canvas/draw.check.ts"
+    "check": "node src/state/store.check.ts && node src/state/actions.check.ts && node src/canvas/viewport.check.ts && node src/canvas/draw.check.ts && node src/io/json.check.ts"
   },
   "devDependencies": {
     "typescript": "~6.0.2",

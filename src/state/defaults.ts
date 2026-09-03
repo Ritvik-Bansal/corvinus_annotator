@@ -39,7 +39,7 @@ export const SEED_LABELS: Label[] = [
       },
       {
         key: 'capState',
-        name: 'Cap State',
+        name: 'State',
         type: 'enum',
         options: ['Open', 'Closed'],
         default: 'Closed',

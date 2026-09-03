@@ -12,10 +12,10 @@
 // ---------------------------------------------------------------------------
 
 /** Bumped whenever the JSON shape changes, so an importer can reject old files. */
-export const DOCUMENT_VERSION = 1
+export const DOCUMENT_VERSION = '1.0'
 
 export interface AnnotationDocument {
-  version: number
+  version: string
   exportedAt: string // ISO 8601; refreshed at export time
   image: ImageMeta
   labels: Label[]

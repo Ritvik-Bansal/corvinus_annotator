@@ -206,8 +206,11 @@ console.log('\nreplaceDocument')
   incoming.image.width = 1 // mutate the caller's object afterwards
   check('store did not alias the caller object', store.getDocument().image.width === 4000)
 
-  check('replaceDocument is undoable', store.undo() === true)
-  check('undo restores the pre-import document', same(store.getDocument(), beforeImport))
+  // Changed in phase 5: import must not leave the previous document reachable
+  // with Ctrl+Z, exactly like opening a different image.
+  check('replaceDocument DISCARDS undo history', store.canUndo() === false)
+  check('so undo cannot resurrect the pre-import document', store.undo() === false)
+  check('the pre-import document is genuinely gone', !same(store.getDocument(), beforeImport))
 }
 
 console.log('\nevery action is undoable, one commit each')
@@ -224,12 +227,16 @@ console.log('\nevery action is undoable, one commit each')
   actions.updateLabel(labelId, { name: 'Temp2' })
   actions.removeLabel(labelId)
   actions.removeAnnotation(annId)
-  actions.replaceDocument(createEmptyDocument())
 
   let depth = 0
   while (store.undo()) depth += 1
-  check('10 actions produced exactly 10 undo steps', depth === 10)
+  check('9 actions produced exactly 9 undo steps', depth === 9)
   check('undoing everything returns the starting document', same(store.getDocument(), start))
+
+  // replaceDocument is excluded above because it clears history by design.
+  actions.addAnnotation({ type: 'bbox', labelId: REAGENT, geometry: BOX })
+  actions.replaceDocument(createEmptyDocument())
+  check('replaceDocument leaves no history behind it', store.canUndo() === false)
 }
 
 console.log('')
