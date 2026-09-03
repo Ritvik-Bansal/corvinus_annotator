@@ -92,7 +92,9 @@ export function createStatusBar(
 
       // Two numbers, because one alone lies. The interval is what the user
       // feels; the draw time is what our code is responsible for.
-      const frame = `${timing.intervalMs.toFixed(1)} ms/frame  ·  ${timing.drawMs.toFixed(2)} ms draw`
+      // Microseconds for the draw cost: it is genuinely tens of µs, and two
+      // decimal places of milliseconds rounds that to a misleading "0.00".
+      const frame = `${timing.intervalMs.toFixed(1)} ms/frame  ·  ${Math.round(timing.drawMs * 1000)} µs draw`
       if (frame !== lastFrame) {
         lastFrame = frame
         frameEl.textContent = frame

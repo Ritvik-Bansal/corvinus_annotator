@@ -26,7 +26,7 @@ export const SEED_LABELS: Label[] = [
     id: 'label_reagent_bottle',
     index: 1,
     name: 'Reagent Bottle',
-    color: '#e6194b',
+    color: '#4363d8',
     attributes: [
       {
         key: 'liquidLevel',
@@ -68,7 +68,7 @@ export const SEED_LABELS: Label[] = [
     id: 'label_microplate',
     index: 3,
     name: 'Microplate',
-    color: '#4363d8',
+    color: '#e6194b',
     attributes: [
       {
         key: 'format',
@@ -82,6 +82,23 @@ export const SEED_LABELS: Label[] = [
     ],
   },
 ]
+
+/** Colours offered to user-created classes, in order, skipping ones in use. */
+export const LABEL_PALETTE: readonly string[] = [
+  '#f58231', // orange
+  '#911eb4', // purple
+  '#42d4f4', // cyan
+  '#f032e6', // magenta
+  '#bfef45', // lime
+  '#469990', // teal
+  '#fabed4', // pink
+  '#dcbeff', // lavender
+]
+
+/** First palette colour not already taken, so new classes stay distinguishable. */
+export function nextLabelColor(used: readonly string[]): string {
+  return LABEL_PALETTE.find((c) => !used.includes(c)) ?? LABEL_PALETTE[0]
+}
 
 export function createEmptyDocument(): AnnotationDocument {
   return {

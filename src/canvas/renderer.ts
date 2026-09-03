@@ -5,7 +5,7 @@
 // draw at most once per display refresh no matter how noisy the input is.
 
 import { CANVAS_BACKGROUND, type Layers } from './layers.ts'
-import { bboxToScreen, drawBox } from './draw.ts'
+import { bboxToScreen, drawBox, drawBoxLabel } from './draw.ts'
 import type { Tool } from '../tools/types.ts'
 import type { ReadonlyDocument, SessionState, Viewport } from '../state/types.ts'
 
@@ -113,10 +113,6 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   }
 
-  function labelColor(document: ReadonlyDocument, labelId: string): string {
-    return document.labels.find((l) => l.id === labelId)?.color ?? FALLBACK_COLOR
-  }
-
   function drawAnnotationsLayer(): void {
     const ctx = layers.ctx.annotations
     prepareVectorLayer(ctx)
@@ -130,12 +126,11 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
     for (const annotation of document.annotations) {
       if (annotation.id === hidden) continue
       if (annotation.type !== 'bbox') continue // polygon lands in a later phase
-      drawBox(
-        ctx,
-        bboxToScreen(annotation.geometry, viewport),
-        labelColor(document, annotation.labelId),
-        { selected: annotation.id === selectedId },
-      )
+      const label = document.labels.find((l) => l.id === annotation.labelId)
+      const color = label?.color ?? FALLBACK_COLOR
+      const rect = bboxToScreen(annotation.geometry, viewport)
+      drawBox(ctx, rect, color, { selected: annotation.id === selectedId })
+      drawBoxLabel(ctx, rect, label?.name ?? 'Unknown', color)
     }
   }
 

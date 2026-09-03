@@ -49,13 +49,30 @@
         <canvas id="layer-image"></canvas>
         <canvas id="layer-annotations"></canvas>
         <canvas id="layer-overlay"></canvas>
+        <p id="canvas-empty">Open an image with <strong>+</strong> to start annotating.</p>
       </div>
+
+      <aside id="sidebar">
+        <section class="panel">
+          <h2>Classes</h2>
+          <div id="class-list"></div>
+          <button id="add-class" type="button">+ Add new class</button>
+        </section>
+        <section class="panel">
+          <h2>Annotations</h2>
+          <div id="annotation-list"></div>
+        </section>
+        <section class="panel">
+          <h2>Attributes</h2>
+          <div id="attribute-fields"></div>
+        </section>
+      </aside>
 
       <footer id="statusbar">
         <span id="status-count">0 annotations</span>
         <span id="status-zoom">Zoom: -</span>
         <span id="status-cursor">X: -   Y: -</span>
-        <span id="status-frame">0.0 ms/frame &middot; 0.00 ms draw</span>
+        <span id="status-frame">0.0 ms/frame &middot; 0 &micro;s draw</span>
       </footer>
     </div>
     <script type="module" src="/src/main.ts"></script>

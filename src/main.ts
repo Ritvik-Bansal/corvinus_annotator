@@ -13,6 +13,7 @@ import { createTools } from './tools/index.ts'
 import { createStatusBar, createTopBar } from './ui/chrome.ts'
 import { createKeyboard } from './ui/keyboard.ts'
 import { createRail } from './ui/rail.ts'
+import { createSidebar } from './ui/sidebar.ts'
 import type { Tool } from './tools/types.ts'
 import type { ToolId } from './state/types.ts'
 
@@ -78,8 +79,32 @@ const interactions = createInteractions(canvasArea, {
 
 const rail = createRail(need<HTMLElement>('#toolrail'), setTool)
 
+const sidebar = createSidebar(
+  {
+    classList: need<HTMLElement>('#class-list'),
+    addClassButton: need<HTMLButtonElement>('#add-class'),
+    annotationList: need<HTMLElement>('#annotation-list'),
+    attributeFields: need<HTMLElement>('#attribute-fields'),
+  },
+  {
+    getDocument: () => store.getDocument(),
+    getSession: () => store.getSession(),
+    setActiveLabel: (activeLabelId) => store.setSession({ activeLabelId }),
+    selectAnnotation: (selectedAnnotationId) => store.setSession({ selectedAnnotationId }),
+    // Every sidebar edit goes through an action, so undo covers all of them.
+    addLabel: (name, color, attributes) => actions.addLabel({ name, color, attributes }),
+    setAttribute: (id, key, value) => actions.setAttribute(id, key, value),
+  },
+)
+
+const canvasEmpty = need<HTMLElement>('#canvas-empty')
+
 createKeyboard({
   setTool,
+  setActiveLabelByPosition: (position) => {
+    const label = store.getDocument().labels[position - 1]
+    if (label !== undefined) store.setSession({ activeLabelId: label.id })
+  },
   deleteSelected: () => {
     const id = store.getSession().selectedAnnotationId
     if (id !== null) actions.removeAnnotation(id)
@@ -115,7 +140,11 @@ store.subscribe((kind) => {
   } else {
     renderer.markDirty('annotations', 'overlay')
     topBar.update(store.getDocument().image)
+    canvasEmpty.hidden = store.getDocument().image.fileName !== ''
   }
+  // The sidebar decides for itself whether this change concerns it. A
+  // viewport-only 'session' change returns from here without touching the DOM.
+  sidebar.handleChange(kind)
 })
 
 renderer.start(() => {
@@ -148,4 +177,6 @@ async function handleFile(file: File): Promise<void> {
 
 topBar.update(store.getDocument().image)
 rail.update(store.getSession().activeTool)
+sidebar.renderAll()
+canvasEmpty.hidden = store.getDocument().image.fileName !== ''
 canvasArea.style.cursor = activeTool()?.cursor ?? 'default'

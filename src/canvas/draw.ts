@@ -88,6 +88,36 @@ export function drawHandles(ctx: CanvasRenderingContext2D, rect: ScreenRect, col
   ctx.restore()
 }
 
+/**
+ * Class name in a filled chip above the box. Drawn in screen space like
+ * everything else on this layer, so the text stays legible at every zoom
+ * instead of scaling with the image.
+ */
+export function drawBoxLabel(
+  ctx: CanvasRenderingContext2D,
+  rect: ScreenRect,
+  text: string,
+  color: string,
+): void {
+  ctx.save()
+  ctx.font = '11px ui-sans-serif, system-ui, sans-serif'
+  ctx.textBaseline = 'middle'
+
+  const paddingX = 5
+  const height = 15
+  const width = ctx.measureText(text).width + paddingX * 2
+  const left = Math.min(rect.x, rect.x + rect.width)
+  const top = Math.min(rect.y, rect.y + rect.height)
+  // Flip below the top edge when the chip would sit off the top of the canvas.
+  const y = top - height - 2 < 0 ? top + 2 : top - height - 2
+
+  ctx.fillStyle = color
+  ctx.fillRect(left, y, width, height)
+  ctx.fillStyle = '#ffffff'
+  ctx.fillText(text, left + paddingX, y + height / 2)
+  ctx.restore()
+}
+
 /** Hit tests run in screen space, which is why grabbing works at any zoom. */
 export function hitHandle(rect: ScreenRect, screenPoint: Point): HandleId | null {
   for (const id of HANDLE_IDS) {

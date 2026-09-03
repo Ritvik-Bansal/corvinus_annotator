@@ -14,6 +14,8 @@ const TOOL_KEYS: Record<string, ToolId> = {
 
 export interface KeyboardDeps {
   setTool(id: ToolId): void
+  /** 1-based position in the class list, from the number keys. */
+  setActiveLabelByPosition(position: number): void
   deleteSelected(): void
   undo(): void
   redo(): void
@@ -49,6 +51,11 @@ export function createKeyboard(deps: KeyboardDeps): void {
 
     if (event.key === 'Escape') {
       deps.cancelGesture()
+      return
+    }
+
+    if (event.key >= '1' && event.key <= '9') {
+      deps.setActiveLabelByPosition(Number(event.key))
       return
     }
 
