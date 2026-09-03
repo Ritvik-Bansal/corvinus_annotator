@@ -19,6 +19,16 @@
   box-sizing: border-box;
 }
 
+/*
+ * The UA stylesheet's [hidden] { display: none } is a plain author-level-losing
+ * rule, so ANY display declaration of ours silently beats it and the element
+ * keeps rendering while el.hidden reads true. Stated once, globally, so this
+ * cannot bite again.
+ */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -172,12 +182,6 @@ body {
   /* The message is wrapped in a single <span> on purpose: grid would otherwise
      make each inline child its own row and break the sentence apart. */
   pointer-events: none; /* never intercept a drag aimed at the canvas */
-}
-
-/* An author `display` rule beats the UA stylesheet's [hidden] { display: none },
-   so the hidden attribute needs saying explicitly or it does nothing at all. */
-#canvas-empty[hidden] {
-  display: none;
 }
 
 #canvas-empty strong {
