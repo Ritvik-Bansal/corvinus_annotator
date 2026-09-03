@@ -19,6 +19,18 @@ import type {
   ReadonlyDocument,
 } from '../state/types.ts'
 
+/**
+ * Exported coordinates are rounded to 2 decimals. Screen-to-image conversion at
+ * a fractional zoom yields values like 623.8381112984824, where everything past
+ * the second decimal is float noise, not information — no annotator places a
+ * point to a hundredth of a pixel. Rounding happens once, on export; importing a
+ * rounded file and exporting it again produces byte-identical output, so the
+ * round trip stays stable. Import still never repairs anything.
+ */
+function round2(value: number): number {
+  return Number(value.toFixed(2))
+}
+
 export type ImportResult =
   | { ok: true; document: AnnotationDocument }
   | { ok: false; message: string }
@@ -68,12 +80,12 @@ export function serializeDocument(document: ReadonlyDocument): string {
       geometry:
         annotation.type === 'bbox'
           ? {
-              x: annotation.geometry.x,
-              y: annotation.geometry.y,
-              width: annotation.geometry.width,
-              height: annotation.geometry.height,
+              x: round2(annotation.geometry.x),
+              y: round2(annotation.geometry.y),
+              width: round2(annotation.geometry.width),
+              height: round2(annotation.geometry.height),
             }
-          : { points: annotation.geometry.points.map((p) => [p.x, p.y]) },
+          : { points: annotation.geometry.points.map((p) => [round2(p.x), round2(p.y)]) },
       createdAt: annotation.createdAt,
       updatedAt: annotation.updatedAt,
     })),
@@ -83,8 +95,8 @@ export function serializeDocument(document: ReadonlyDocument): string {
       id: stroke.id,
       mode: stroke.mode,
       labelId: stroke.labelId,
-      radius: stroke.radius,
-      points: stroke.points.map((p) => [p.x, p.y]),
+      radius: round2(stroke.radius),
+      points: stroke.points.map((p) => [round2(p.x), round2(p.y)]),
     })),
   }
   // 2-space indent and a trailing newline: the file is meant to be opened and read.

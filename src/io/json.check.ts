@@ -144,6 +144,62 @@ console.log('\nround trip')
   }
 }
 
+console.log('\ncoordinate rounding')
+{
+  const store = createStore()
+  const actions = createActions(store)
+  actions.openImage(IMAGE)
+  // The kind of values screen-to-image conversion actually produces.
+  actions.addAnnotation({
+    type: 'bbox',
+    labelId: 'label_reagent_bottle',
+    geometry: { x: 623.8381112984824, y: 775.123102866779, width: 662.9342327150085, height: 611.9392917369308 },
+  })
+  actions.addAnnotation({
+    type: 'polygon',
+    labelId: 'label_pipette_tip',
+    geometry: { points: [{ x: 1745.726812816189, y: 673.1332209106239 }, { x: 2.005, y: -0.004 }, { x: 900, y: 900 }] },
+  })
+  const text = serializeDocument(store.getDocument())
+  const wire = JSON.parse(text)
+
+  check('bbox coordinates are rounded to 2 decimals',
+    JSON.stringify(wire.annotations[0].geometry) ===
+      JSON.stringify({ x: 623.84, y: 775.12, width: 662.93, height: 611.94 }),
+    wire.annotations[0].geometry)
+  check('polygon points are rounded to 2 decimals',
+    JSON.stringify(wire.annotations[1].geometry.points[0]) === JSON.stringify([1745.73, 673.13]),
+    wire.annotations[1].geometry.points[0])
+  check('a value that is already short is left alone',
+    JSON.stringify(wire.annotations[1].geometry.points[2]) === JSON.stringify([900, 900]))
+  // Walk the parsed numbers rather than the raw text: ISO timestamps contain
+  // millisecond decimals ("...:41.808Z") that would match a naive regex.
+  const longDecimals: number[] = []
+  const walk = (value: unknown): void => {
+    if (typeof value === 'number') {
+      if (Math.round(value * 100) / 100 !== value) longDecimals.push(value)
+    } else if (Array.isArray(value)) value.forEach(walk)
+    else if (value !== null && typeof value === 'object') Object.values(value).forEach(walk)
+  }
+  walk(wire)
+  check('no exported number carries more than 2 decimals', longDecimals.length === 0, longDecimals)
+
+  // Rounding must not make the round trip lossy in a compounding way.
+  const first = parseDocument(text, IMAGE)
+  check('a rounded file imports', first.ok, first.ok ? '' : first.message)
+  if (first.ok) {
+    const second = serializeDocument(first.document)
+    const a = JSON.parse(text)
+    const b = JSON.parse(second)
+    b.exportedAt = a.exportedAt
+    check('export -> import -> export is byte-identical (rounding is idempotent)',
+      JSON.stringify(a) === JSON.stringify(b))
+    const imported = first.document.annotations[0]
+    check('imported coordinates match the originals within 0.01',
+      imported.type === 'bbox' && Math.abs(imported.geometry.x - 623.8381112984824) <= 0.01)
+  }
+}
+
 console.log('\nrefusals')
 {
   const { store } = populated()
