@@ -29,3 +29,17 @@ what i want: exact terminal commands to scaffold, one at a time. add a one-line 
 constraints: i dont want any dependencies other than vite and typescript unless you tell me why first. for now, no app logic, no canvas code, nothing about annotation yet. NOTE: i am new to typescript so when you use syntax that isn't easy to understand, add a simple one lined comment explaining it
 
 after the commands tell me exactly what i should see on screen if it worked
+
+--------------
+
+[3] phase 1 (part a) will focus only on the state module only! no rendering, no canvas, no image loading, etc. currently we have an empty scaffold, src/ has only main.ts and we need to build the document shape and state module first since everything depends on it. our goal is to create typescript types for the annotation document, plus a small state module that holds it and notifies on any change
+
+im thinking the document has six top level keys. these include version, exportedAt, image, labels, annotations, and strokes
+
+image will have fileName, width, height labels will have an array of id, index, name, color, attributes, where attributes are an array of definitions that include key, name, type, and type-specific fields like min/max for number or options for enum. annotations will have an array of id, type, labelId, attributes, geometry, createdAt, updatedAt. the type will be bbox or polygon and attributes here is the actual keyvalue data. geometry differs by type obviously strokes should be ONE ordered list for the whole image, not per annotation. each stroke is id, labelId, mode: paint or erase, radius, and point. i beleive the order matters because an erase stroke removes pixels from every class, not just its own
+
+split document state from session state. document state (the six keys above) is exported and undoable. session state however is NOT exported and NOT undoable so like viewport (scale, offsetX, offsetY), activeTool, activeLabelId, brushRadius, selection
+
+what i want: 1 the types, in their own file, 2 a state module holding the document plus session state, with subscribe/notify, 3 undo/redo over document state only, using structuredClone snapshots, capped at 40, 4 three seed labels: Reagent Bottle, Pipette Tip, Microplate, with index 1, 2, 3 and attribute defs that make sense
+
+make sure u explain any typescript syntax that isn't obvious in a oneline comment SIMPLY. essentially, i should be able to create a document, add an annotation, undo, redo, and get identical state and changing the viewport does not add an undo entry and also subscribe fires when the document changes
