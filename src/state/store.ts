@@ -57,9 +57,17 @@ export function createStore(
      *   store.commit(d => { d.annotations.push(annotation) })
      */
     commit(mutate: (draft: AnnotationDocument) => void): void {
-      pushUndo(structuredClone(doc))
+      const snapshot = structuredClone(doc)
+      try {
+        mutate(doc)
+      } catch (error) {
+        // Roll back so a throwing action can't leave a half-applied change or a
+        // stray undo entry. The stacks are only touched on success, below.
+        doc = snapshot
+        throw error
+      }
+      pushUndo(snapshot)
       redoStack = [] // a fresh edit invalidates any redo branch
-      mutate(doc)
       notify('document')
     },
 
