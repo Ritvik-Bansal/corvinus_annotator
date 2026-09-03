@@ -95,6 +95,23 @@ then phase 4 which is the polygon tool. i want the polygon to be enabled in the 
 
 make sure u dont add stuff i didnt ask for
 
-
+--------------
 
 [9] the create class dialouge should only pop up if the "add new class button" is first hit and then upon creation of the class, the box should go away. currently the create class box is always there, whether or not hte user wants to create a class in the first place. please make this fix.
+
+--------------
+
+[10] nice! lets do export and import next (phase 5).
+
+what i want an export json button in the top bar which downloads a file named after the image. there should also be an import json button next to it. here is an example json attached to the chat that i mapped. feel free to make edits on the JSON but make sure to ask me before, as there may have been some things that i missed. remember, when importing, it should replace the curr doc and clears history.
+
+make sure u run validation on import. if it is failing write a message that says what to do.
+
+after this phase I should be able to export, refresh the page, reopen the same image, import, and the state is identical, including custom classes
+
+--------------
+
+[11] round exported coordinates to 2 decimals
+
+--------------
+
