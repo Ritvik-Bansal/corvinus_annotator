@@ -43,3 +43,23 @@ split document state from session state. document state (the six keys above) is 
 what i want: 1 the types, in their own file, 2 a state module holding the document plus session state, with subscribe/notify, 3 undo/redo over document state only, using structuredClone snapshots, capped at 40, 4 three seed labels: Reagent Bottle, Pipette Tip, Microplate, with index 1, 2, 3 and attribute defs that make sense
 
 make sure u explain any typescript syntax that isn't obvious in a oneline comment SIMPLY. essentially, i should be able to create a document, add an annotation, undo, redo, and get identical state and changing the viewport does not add an undo entry and also subscribe fires when the document changes
+
+--------------
+
+[4] before phase 1b, two things: add the DeepReadonly mapped type to getDocument(). since u said it was free lets take it. i don't want all writes go through commit() but prefer  the compiler to reject direct mutation. if it turns out to be more than a few lines or it fights with the stroke union type stop and tell me instead of forcing it. also confirm store.check.ts is not ending up in the production bundle. tell me how you verified it.
+
+then push!
+
+after that phase 1 part b: domain actions only!
+
+i want typed functions for the operations the app actually performs so tools arent calling commit() directly.
+
+i want addAnnotation, removeAnnotation, updateAnnotationGeometry, setAttribute, addStroke, etc (what ever u else deem fit). new annotations should get their label's attribute default values applied automatically
+
+--------------
+
+[5] phase 1 part c now which is gonna be canvas and image loading. i wanna see output on the screen now. i believe we finished out state layer but nothing renders yet. we need to be able to load an image with the plus button, see it on screen and pan and zoom it smoothly
+
+i want three stacked canvas elements (image, annotations, overlay) only the image layer draws this phase, the other two exist but stay empty. screenToImage and imageToScreen conversion functions should be implemented. all stored coordinates are in image pixel space. these two functions should be the ONLY place coordinate math happens.i want a plus button in a top bar that opens a file picker, loads an image, and sets appropriate fields in the doc. i should be able ot pan by dragging, zoom with scrool wheel. u should also handle devicepixelratio. make sure to add a zoom status bar pecent and cursor postion in image coordinates and milliseconds per frame at the bottom (image of layout attached).
+
+remember no annotation tools, no drawing, no sidebar yet
