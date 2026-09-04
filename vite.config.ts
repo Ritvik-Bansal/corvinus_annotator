@@ -11,5 +11,11 @@ export default defineConfig({
   build: {
     target: 'es2022', // modern browsers only: smaller output, no transpilation noise
     sourcemap: true,  // readable stack traces when debugging the deployed demo
+    rollupOptions: {
+      // Two pages, two entry points. Vite treats each HTML file as a build
+      // entry and follows its module graph, so they share chunks rather than
+      // duplicating the canvas and viewport code.
+      input: { main: 'index.html', compare: 'compare.html' },
+    },
   },
 })

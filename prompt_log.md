@@ -142,3 +142,13 @@ Masks are per class, not per instance. we can have 3 diff bounding boxes on thre
 --------------
 
 [14] apply the fix! it looks like you found the correct bug and i have verified it on my own.
+
+--------------
+
+[15] creating a new feature now separate page from the annotator called inter annotator agreement. the idea is that 2 ppl who have annotated the same image can know if they agreed before that data goes into the training data (completely new feature not in the required set).
+
+the page should likely have its own route and is linked to the main app forward and backwards for easy nav. it would load the image and two exported jsons and it should check the metadata to decide wether or not to accept/reject them for exmaple looking at img dimensions. matching is done only through bounding boxes for now and we are comparing those of the same class. we will be using intersection area over union area (IoU i believe) and using a greedly algorothim where we take the highest scoring pair above a certain threshold, mark them as matched, remove both of them, and then repeat with the rest. the threshold can be a slider which defaults at 0.5 which is draggable so we can see matches come and go. for now, lets make the polygon and masks counted and shown as not compared.
+
+on the display side we should see the image with both files drawn over it and create something where we have three different groups (matched pairs, A only, and B only) with an accurate legend for readbility. we need a summary section for how many pairs matched, what wasnt counted, how mnay in a and b each, and the mean interesction over union score, along with other relevant statistics. i think it would be nice to have per class breakdown of scores as well (this could help narrow down what parts of the taxonomy are ambiguous). remember this is no merging/editing yet.
+
+make sure you are reusing the same canvas as the main app. add unit checks for the IoU and matching BEFORE coding so there is no room for bias tests. thanks!

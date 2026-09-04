@@ -5,29 +5,26 @@
 // draw at most once per display refresh no matter how noisy the input is.
 
 import { CANVAS_BACKGROUND, type Layers } from './layers.ts'
-import {
-  bboxToScreen,
-  drawBox,
-  drawLabelChip,
-  drawPolygon,
-  polygonToScreen,
-  screenBounds,
-} from './draw.ts'
-import { MASK_OPACITY, type Mask } from './mask.ts'
-import type { Tool } from '../tools/types.ts'
-import type { ReadonlyDocument, SessionState, Viewport } from '../state/types.ts'
+import type { Viewport } from '../state/types.ts'
 
-/** Everything the renderer needs to read. It pulls; nothing pushes to it. */
+/**
+ * What the renderer needs. It owns the frame loop, the dirty flags, the DPR
+ * handling and the image layer; the caller owns what goes on the two vector
+ * layers. That split is what lets the annotator and the comparison page share
+ * this loop instead of each having their own.
+ */
 export interface Scene {
-  getMask(): Mask
   getBitmap(): ImageBitmap | null
   getViewport(): Viewport
-  getDocument(): ReadonlyDocument
-  getSession(): SessionState
-  getActiveTool(): Tool | null
+  /**
+   * Draw the annotations layer. The context is already cleared and scaled for
+   * devicePixelRatio, so draw in CSS pixels; `dpr` is passed for the rare case
+   * of needing the raw viewport transform (blitting an image-space bitmap).
+   */
+  drawAnnotations(ctx: CanvasRenderingContext2D, dpr: number): void
+  /** Draw the overlay layer. Same contract. */
+  drawOverlay(ctx: CanvasRenderingContext2D, dpr: number): void
 }
-
-const FALLBACK_COLOR = '#8b93a1'
 
 export type LayerName = 'image' | 'annotations' | 'overlay'
 
@@ -125,79 +122,13 @@ export function createRenderer(layers: Layers, scene: Scene): Renderer {
   function drawAnnotationsLayer(): void {
     const ctx = layers.ctx.annotations
     prepareVectorLayer(ctx)
-
-    const document = scene.getDocument()
-    const viewport = scene.getViewport()
-
-    // The mask goes down first so boxes and polygons read on top of it. It is
-    // an image-space bitmap, so it is blitted through the viewport transform
-    // exactly like the photo, then the transform is restored to screen space.
-    const mask = scene.getMask()
-    mask.sync(document)
-    if (mask.hasContent()) {
-      ctx.save()
-      const dpr = layers.getDpr()
-      const s = viewport.scale * dpr
-      ctx.setTransform(s, 0, 0, s, viewport.offsetX * dpr, viewport.offsetY * dpr)
-      ctx.globalAlpha = MASK_OPACITY
-      ctx.imageSmoothingEnabled = viewport.scale < 1
-      ctx.drawImage(mask.canvas, 0, 0)
-      ctx.restore()
-    }
-
-    // One chip per painted class, anchored to that class's painted extent.
-    // Drawn back in screen space, so it reads the same at every zoom — and it
-    // stays put through pan and zoom because the anchor goes through
-    // imageToScreen like every other position on this layer.
-    const highlighted = scene.getSession().highlightedMaskLabelId
-    for (const [labelId, box] of mask.getClassBounds()) {
-      const label = document.labels.find((l) => l.id === labelId)
-      if (label === undefined) continue
-      const rect = bboxToScreen(
-        { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY },
-        viewport,
-      )
-      if (labelId === highlighted) {
-        ctx.save()
-        ctx.strokeStyle = label.color
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([6, 4])
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
-        ctx.restore()
-      }
-      drawLabelChip(ctx, { x: rect.x, y: rect.y }, label.name, label.color)
-    }
-    const selectedId = scene.getSession().selectedAnnotationId
-    // Suppressed because a tool is drawing a live version of it on the overlay.
-    const hidden = scene.getActiveTool()?.hiddenAnnotationId() ?? null
-
-    for (const annotation of document.annotations) {
-      if (annotation.id === hidden) continue
-      const label = document.labels.find((l) => l.id === annotation.labelId)
-      const color = label?.color ?? FALLBACK_COLOR
-      const name = label?.name ?? 'Unknown'
-      const selected = annotation.id === selectedId
-
-      if (annotation.type === 'bbox') {
-        const rect = bboxToScreen(annotation.geometry, viewport)
-        drawBox(ctx, rect, color, { selected })
-        drawLabelChip(ctx, { x: Math.min(rect.x, rect.x + rect.width), y: Math.min(rect.y, rect.y + rect.height) }, name, color)
-      } else {
-        const points = polygonToScreen(annotation.geometry, viewport)
-        drawPolygon(ctx, points, color, { selected })
-        drawLabelChip(ctx, screenBounds(points), name, color)
-      }
-    }
+    scene.drawAnnotations(ctx, layers.getDpr())
   }
 
   function drawOverlayLayer(): void {
     const ctx = layers.ctx.overlay
     prepareVectorLayer(ctx)
-    scene.getActiveTool()?.drawOverlay(ctx, {
-      viewport: scene.getViewport(),
-      document: scene.getDocument(),
-      session: scene.getSession(),
-    })
+    scene.drawOverlay(ctx, layers.getDpr())
   }
 
   function frame(timestamp: number, onFrame: () => void): void {

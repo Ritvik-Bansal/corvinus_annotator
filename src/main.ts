@@ -8,6 +8,7 @@ import { createInteractions } from './canvas/interactions.ts'
 import { createLayers } from './canvas/layers.ts'
 import { createMask } from './canvas/mask.ts'
 import { maskedLabelIds } from './state/masks.ts'
+import { createAnnotatorScene } from './canvas/annotatorScene.ts'
 import { createRenderer } from './canvas/renderer.ts'
 import { loadImageFile } from './canvas/image.ts'
 import { fitToViewport } from './canvas/viewport.ts'
@@ -84,14 +85,17 @@ function setTool(id: ToolId): void {
   canvasArea.style.cursor = tools[id]?.cursor ?? 'default'
 }
 
-const renderer = createRenderer(layers, {
-  getMask: () => mask,
-  getBitmap: () => bitmap,
-  getViewport: () => store.getSession().viewport,
-  getDocument: () => store.getDocument(),
-  getSession: () => store.getSession(),
-  getActiveTool: activeTool,
-})
+const renderer = createRenderer(
+  layers,
+  createAnnotatorScene({
+    getMask: () => mask,
+    getBitmap: () => bitmap,
+    getViewport: () => store.getSession().viewport,
+    getDocument: () => store.getDocument(),
+    getSession: () => store.getSession(),
+    getActiveTool: activeTool,
+  }),
+)
 
 const interactions = createInteractions(canvasArea, {
   getViewport: () => store.getSession().viewport,

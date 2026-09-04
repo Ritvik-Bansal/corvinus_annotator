@@ -524,3 +524,202 @@ body {
 .row-delete:hover {
   color: var(--error) !important;
 }
+
+/* --- comparison page ------------------------------------------------------ */
+#app.compare {
+  grid-template-columns: 1fr 320px; /* no tool rail here */
+}
+
+#app.compare #canvas-area {
+  cursor: grab;
+}
+
+/* Panels default to shrinking in a flex column, which was hiding the bottom of
+   the summary. Only the pair list should absorb or give up space. */
+#app.compare .panel {
+  flex: none;
+}
+
+#app.compare #cmp-pairs-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.page-link {
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.page-link:hover {
+  border-color: var(--selected);
+  color: var(--text);
+}
+
+.file-button {
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.file-button:hover {
+  border-color: var(--selected);
+  color: var(--text);
+}
+
+#cmp-loaded {
+  flex: none;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+#cmp-message {
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cmp-message.is-error {
+  color: var(--error);
+  white-space: normal;
+}
+
+.threshold {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.threshold input[type='range'] {
+  flex: 1;
+  accent-color: var(--text-dim);
+}
+
+.threshold output {
+  min-width: 34px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.legend {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.legend div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend i {
+  display: block;
+  flex: none;
+  width: 16px;
+  height: 0;
+  border-top-width: 2px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-grid dt {
+  color: var(--text-dim);
+}
+
+.stat-grid dd {
+  margin: 0;
+  text-align: right;
+}
+
+.class-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.class-table th {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--chrome-border);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.class-table th:first-child,
+.class-table td:first-child {
+  text-align: left;
+}
+
+.class-table td {
+  padding: 4px 0;
+  text-align: right;
+}
+
+.class-table .swatch {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+#cmp-pairs-panel {
+  flex: 1;
+}
+
+.pair-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pair-row:hover {
+  background: var(--chrome-hover);
+}
+
+.pair-row.is-selected {
+  border-color: var(--selected);
+  background: var(--chrome-hover);
+}
+
+.pair-row .iou {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.not-compared {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--chrome-border);
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
