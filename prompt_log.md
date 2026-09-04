@@ -157,4 +157,4 @@ make sure you are reusing the same canvas as the main app. add unit checks for t
 
 --------------
 
-[16] yep lets go with your option of id first and having the name as a fallback. but make sure to report when the fallback used and report classes present in only one taxonomy.
+[17] yep lets go with your option of id first and having the name as a fallback. but make sure to report when the fallback used and report classes present in only one taxonomy.
