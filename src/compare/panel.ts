@@ -3,8 +3,7 @@
 
 import { STATUS_COLORS, pairId } from './scene.ts'
 import { summarize, summarizeByClass, worstFirst } from './agreement.ts'
-import type { MatchResult, NotCompared } from './agreement.ts'
-import type { ReadonlyDocument } from '../state/types.ts'
+import type { MatchResult, NotCompared, Taxonomy } from './agreement.ts'
 
 export interface PanelElements {
   legend: HTMLElement
@@ -16,7 +15,7 @@ export interface Panel {
   renderLegend(): void
   render(
     result: MatchResult | null,
-    labels: ReadonlyDocument['labels'],
+    taxonomy: Taxonomy,
     notCompared: NotCompared,
     selectedPairId: string | null,
   ): void
@@ -44,7 +43,10 @@ export function createPanel(elements: PanelElements, onSelectPair: (id: string) 
       )
     },
 
-    render(result, labels, notCompared, selectedPairId): void {
+    render(result, taxonomy, notCompared, selectedPairId): void {
+      // Names resolve through the merged taxonomy, not through one file's label
+      // list — a class that exists only in B used to render as a raw uuid.
+      const classOf = (key: string) => taxonomy.display.get(key)
       if (result === null) {
         elements.summary.replaceChildren(empty('Load an image and two JSON files.'))
         elements.pairs.replaceChildren(empty('No pairs yet.'))
@@ -79,7 +81,7 @@ export function createPanel(elements: PanelElements, onSelectPair: (id: string) 
       }
       table.append(head)
       for (const [labelId, stats] of byClass) {
-        const label = labels.find((l) => l.id === labelId)
+        const label = classOf(labelId)
         const row = document.createElement('tr')
         const name = document.createElement('td')
         const swatch = document.createElement('span')
@@ -101,14 +103,38 @@ export function createPanel(elements: PanelElements, onSelectPair: (id: string) 
         table.append(row)
       }
 
-      const note = document.createElement('p')
-      note.className = 'not-compared'
-      note.textContent =
-        `Not compared: ${notCompared.polygonsA} + ${notCompared.polygonsB} polygons, ` +
-        `${notCompared.maskClassesA} + ${notCompared.maskClassesB} mask classes. ` +
-        `Only bounding boxes are scored.`
+      const notes = document.createElement('div')
+      notes.className = 'notes'
+      notes.append(
+        note(
+          `Not compared: ${notCompared.polygonsA} + ${notCompared.polygonsB} polygons, ` +
+            `${notCompared.maskClassesA} + ${notCompared.maskClassesB} mask classes. ` +
+            `Only bounding boxes are scored.`,
+        ),
+      )
+      // Both of these are facts about the two files' taxonomies, not about the
+      // annotations, and both are easy to mistake for annotator disagreement.
+      if (taxonomy.nameFallbacks.length > 0) {
+        notes.append(
+          note(
+            `Matched by name, not id: ${taxonomy.nameFallbacks.map((f) => f.name).join(', ')}. ` +
+              `The two files give these classes different ids, so they were aligned on name.`,
+            'is-warning',
+          ),
+        )
+      }
+      if (taxonomy.onlyInA.length > 0 || taxonomy.onlyInB.length > 0) {
+        const parts: string[] = []
+        if (taxonomy.onlyInA.length > 0) {
+          parts.push(`only in A: ${taxonomy.onlyInA.map((c) => c.name).join(', ')}`)
+        }
+        if (taxonomy.onlyInB.length > 0) {
+          parts.push(`only in B: ${taxonomy.onlyInB.map((c) => c.name).join(', ')}`)
+        }
+        notes.append(note(`Classes ${parts.join('; ')}. Boxes on them can never match.`, 'is-warning'))
+      }
 
-      elements.summary.replaceChildren(grid, table, note)
+      elements.summary.replaceChildren(grid, table, notes)
 
       // Worst agreement first: the weakest pair is the one worth looking at.
       const sorted = worstFirst(result)
@@ -124,7 +150,7 @@ export function createPanel(elements: PanelElements, onSelectPair: (id: string) 
           row.className = 'pair-row' + (id === selectedPairId ? ' is-selected' : '')
           row.dataset.pairId = id
 
-          const label = labels.find((l) => l.id === pair.a.labelId)
+          const label = classOf(pair.a.labelId)
           const swatch = document.createElement('span')
           swatch.className = 'swatch'
           swatch.style.background = label?.color ?? '#8b93a1'
@@ -142,6 +168,13 @@ export function createPanel(elements: PanelElements, onSelectPair: (id: string) 
       )
     },
   }
+}
+
+function note(text: string, extraClass?: string): HTMLElement {
+  const element = document.createElement('p')
+  element.className = extraClass === undefined ? 'note' : `note ${extraClass}`
+  element.textContent = text
+  return element
 }
 
 function empty(text: string): HTMLElement {

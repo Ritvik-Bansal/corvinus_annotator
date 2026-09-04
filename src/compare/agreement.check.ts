@@ -3,6 +3,8 @@
 // part with unit checks.
 
 import {
+  alignTaxonomies,
+  applyTaxonomy,
   area,
   boxesOf,
   intersectionArea,
@@ -165,6 +167,64 @@ console.log('\nsummaries')
   const sorted = worstFirst(result)
   check('pairs are sorted worst agreement first',
     sorted.length === 2 && sorted[0].iou <= sorted[1].iou, sorted.map((p) => p.iou))
+}
+
+console.log('\ntaxonomy alignment')
+{
+  const cls = (id: string, name: string) => ({ id, name, color: '#fff' })
+
+  // Both files carry the seed classes: aligned on id, no fallback needed.
+  const seedsA = [cls('label_reagent_bottle', 'Reagent Bottle'), cls('label_pipette_tip', 'Pipette Tip')]
+  const seedsB = [cls('label_reagent_bottle', 'Reagent Bottle'), cls('label_pipette_tip', 'Pipette Tip')]
+  const plain = alignTaxonomies(seedsA, seedsB)
+  check('identical ids align with no name fallback', plain.nameFallbacks.length === 0)
+  check('and nothing is reported as one-sided',
+    plain.onlyInA.length === 0 && plain.onlyInB.length === 0)
+  check('ids map to themselves', plain.keys.get('label_pipette_tip') === 'label_pipette_tip')
+
+  // The real case: each annotator created "Petri Dish" independently.
+  const a = [...seedsA, cls('label_uuid_a', 'Petri Dish')]
+  const b = [...seedsB, cls('label_uuid_b', 'Petri Dish')]
+  const aligned = alignTaxonomies(a, b)
+  check('a class with matching name but different ids aligns by name',
+    aligned.keys.get('label_uuid_a') === aligned.keys.get('label_uuid_b'),
+    [aligned.keys.get('label_uuid_a'), aligned.keys.get('label_uuid_b')])
+  check('the name fallback is REPORTED, not silent',
+    aligned.nameFallbacks.length === 1 && aligned.nameFallbacks[0].name === 'Petri Dish',
+    aligned.nameFallbacks)
+  check('the fallback names both ids', 
+    aligned.nameFallbacks[0].idA === 'label_uuid_a' && aligned.nameFallbacks[0].idB === 'label_uuid_b')
+  check('names differing only in case and spacing still align',
+    alignTaxonomies([cls('x', 'Petri  Dish')], [cls('y', 'petri dish')]).nameFallbacks.length === 1)
+
+  // ACCEPTANCE: boxes on that class now match.
+  const boxesA = applyTaxonomy([box('a1', 'label_uuid_a', 0, 0, 100, 100)], aligned)
+  const boxesB = applyTaxonomy([box('b1', 'label_uuid_b', 5, 5, 100, 100)], aligned)
+  const matched = matchBoxes(boxesA, boxesB, 0.5)
+  check('two boxes on the same-named custom class now match', matched.matched.length === 1,
+    { matched: matched.matched.length, onlyA: matched.onlyA.length, onlyB: matched.onlyB.length })
+
+  // Id is authoritative: it wins over a name match.
+  const idWins = alignTaxonomies(
+    [cls('shared', 'Bottle'), cls('other_a', 'Tip')],
+    [cls('shared', 'Renamed Bottle'), cls('other_b', 'Tip')],
+  )
+  check('a shared id aligns even when the names differ',
+    idWins.keys.get('shared') === 'shared' && idWins.nameFallbacks.length === 1, idWins.nameFallbacks)
+
+  // Classes in only one taxonomy.
+  const lopsided = alignTaxonomies([...seedsA, cls('a_only', 'Petri Dish')], [...seedsB, cls('b_only', 'Slide')])
+  check('a class only A has is reported',
+    lopsided.onlyInA.length === 1 && lopsided.onlyInA[0].name === 'Petri Dish', lopsided.onlyInA)
+  check('a class only B has is reported',
+    lopsided.onlyInB.length === 1 && lopsided.onlyInB[0].name === 'Slide', lopsided.onlyInB)
+  check('a one-sided class still gets a display entry, so it never renders as a raw id',
+    lopsided.display.get('b_only')?.name === 'Slide', lopsided.display.get('b_only'))
+
+  // A duplicated name cannot claim two partners.
+  const dup = alignTaxonomies([cls('a1', 'Dish'), cls('a2', 'Dish')], [cls('b1', 'Dish')])
+  check('a duplicated name only claims one partner', dup.nameFallbacks.length === 1, dup.nameFallbacks)
+  check('and the loser is reported as one-sided', dup.onlyInA.length === 1, dup.onlyInA)
 }
 
 console.log('\npolygons are excluded, not approximated')

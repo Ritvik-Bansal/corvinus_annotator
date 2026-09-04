@@ -9,6 +9,94 @@
 
 import type { BboxGeometry, ReadonlyDocument } from '../state/types.ts'
 
+// ---------------------------------------------------------------------------
+// Class alignment
+//
+// Boxes are matched within a class, so "same class" has to be decided first.
+// labelId is authoritative: the seed classes ship with stable hand-written ids
+// precisely so two files agree on them. But a class each annotator created
+// independently gets a fresh uuid on each side, so two boxes both labelled
+// "Petri Dish" would never match on id alone. Name is therefore used as a
+// fallback — and every time it fires, it is reported, because "your two files
+// use different ids for the same class" is a fact about the dataset rather than
+// a detail to paper over.
+// ---------------------------------------------------------------------------
+
+export interface ClassRef {
+  id: string
+  name: string
+  color: string
+}
+
+export interface Taxonomy {
+  /** labelId, from either file, to the canonical key used for matching. */
+  keys: Map<string, string>
+  /** Canonical key to the class to show for it. A's wins where both have one. */
+  display: Map<string, ClassRef>
+  /** Classes aligned by name because the two files gave them different ids. */
+  nameFallbacks: Array<{ name: string; idA: string; idB: string }>
+  /** Classes whose name appears in only one of the two label lists. */
+  onlyInA: ClassRef[]
+  onlyInB: ClassRef[]
+}
+
+/** Case and surrounding whitespace are not meaningful differences in a name. */
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+export function alignTaxonomies(a: readonly ClassRef[], b: readonly ClassRef[]): Taxonomy {
+  const keys = new Map<string, string>()
+  const display = new Map<string, ClassRef>()
+  const nameFallbacks: Taxonomy['nameFallbacks'] = []
+  const onlyInA: ClassRef[] = []
+  const onlyInB: ClassRef[] = []
+
+  const bById = new Map(b.map((label) => [label.id, label]))
+  const bByName = new Map<string, ClassRef>()
+  for (const label of b) {
+    // First wins, so a duplicated name in one file cannot claim two partners.
+    if (!bByName.has(normalizeName(label.name))) bByName.set(normalizeName(label.name), label)
+  }
+  const claimed = new Set<string>()
+
+  for (const labelA of a) {
+    const sameId = bById.get(labelA.id)
+    if (sameId !== undefined) {
+      keys.set(labelA.id, labelA.id)
+      display.set(labelA.id, labelA)
+      claimed.add(sameId.id)
+      continue
+    }
+    const sameName = bByName.get(normalizeName(labelA.name))
+    if (sameName !== undefined && !claimed.has(sameName.id)) {
+      keys.set(labelA.id, labelA.id)
+      keys.set(sameName.id, labelA.id) // B's id folds into A's key
+      display.set(labelA.id, labelA)
+      nameFallbacks.push({ name: labelA.name, idA: labelA.id, idB: sameName.id })
+      claimed.add(sameName.id)
+      continue
+    }
+    keys.set(labelA.id, labelA.id)
+    display.set(labelA.id, labelA)
+    onlyInA.push(labelA)
+  }
+
+  for (const labelB of b) {
+    if (claimed.has(labelB.id) || keys.has(labelB.id)) continue
+    keys.set(labelB.id, labelB.id)
+    display.set(labelB.id, labelB)
+    onlyInB.push(labelB)
+  }
+
+  return { keys, display, nameFallbacks, onlyInA, onlyInB }
+}
+
+/** Rewrites labelIds to canonical keys, so both files speak one taxonomy. */
+export function applyTaxonomy(boxes: BoxRef[], taxonomy: Taxonomy): BoxRef[] {
+  return boxes.map((box) => ({ ...box, labelId: taxonomy.keys.get(box.labelId) ?? box.labelId }))
+}
+
 export interface BoxRef {
   id: string
   labelId: string
@@ -81,7 +169,9 @@ export function matchBoxes(a: BoxRef[], b: BoxRef[], threshold: number): MatchRe
   for (const boxA of a) {
     for (const boxB of b) {
       // Different classes are never a match: disagreeing about the class IS a
-      // disagreement, and should show as one-only on both sides.
+      // disagreement, and should show as one-only on both sides. Run the boxes
+      // through applyTaxonomy first so this compares canonical class keys
+      // rather than raw per-file ids.
       if (boxA.labelId !== boxB.labelId) continue
       const score = iou(boxA.geometry, boxB.geometry)
       if (score < threshold || score <= 0) continue

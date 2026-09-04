@@ -715,11 +715,25 @@ body {
   color: var(--text-dim);
 }
 
-.not-compared {
+.notes {
+  display: grid;
+  gap: 7px;
   margin-top: 10px;
   padding-top: 9px;
   border-top: 1px solid var(--chrome-border);
+}
+
+.note {
+  margin: 0;
   color: var(--text-dim);
   font-size: 11px;
   line-height: 1.5;
+}
+
+/* A taxonomy mismatch is easy to misread as annotator disagreement, so it is
+   the one thing on this page allowed to draw the eye. */
+.note.is-warning {
+  padding-left: 8px;
+  border-left: 2px solid var(--error);
+  color: var(--text);
 }

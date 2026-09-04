@@ -152,3 +152,9 @@ the page should likely have its own route and is linked to the main app forward 
 on the display side we should see the image with both files drawn over it and create something where we have three different groups (matched pairs, A only, and B only) with an accurate legend for readbility. we need a summary section for how many pairs matched, what wasnt counted, how mnay in a and b each, and the mean interesction over union score, along with other relevant statistics. i think it would be nice to have per class breakdown of scores as well (this could help narrow down what parts of the taxonomy are ambiguous). remember this is no merging/editing yet.
 
 make sure you are reusing the same canvas as the main app. add unit checks for the IoU and matching BEFORE coding so there is no room for bias tests. thanks!
+
+[16] How is the app currently deciding if two boxes are "the same class" across two files, by labelId or by class name?
+
+--------------
+
+[16] yep lets go with your option of id first and having the name as a fallback. but make sure to report when the fallback used and report classes present in only one taxonomy.

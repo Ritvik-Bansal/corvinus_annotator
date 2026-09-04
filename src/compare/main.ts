@@ -11,10 +11,10 @@ import { createPanTool } from '../tools/pan.ts'
 import { readTextFile } from '../io/file.ts'
 import { parseDocument } from '../io/json.ts'
 import { maskedLabelIds } from '../state/masks.ts'
-import { boxesOf, matchBoxes, summarize } from './agreement.ts'
+import { alignTaxonomies, applyTaxonomy, boxesOf, matchBoxes, summarize } from './agreement.ts'
 import { createCompareScene, pairId } from './scene.ts'
 import { createPanel } from './panel.ts'
-import type { MatchResult, NotCompared } from './agreement.ts'
+import type { MatchResult, NotCompared, Taxonomy } from './agreement.ts'
 import type { AnnotationDocument, ImageMeta, ReadonlyDocument, Viewport } from '../state/types.ts'
 
 function need<T extends Element>(selector: string): T {
@@ -39,6 +39,7 @@ let image: ImageMeta | null = null
 let docA: AnnotationDocument | null = null
 let docB: AnnotationDocument | null = null
 let result: MatchResult | null = null
+let taxonomy: Taxonomy = alignTaxonomies([], [])
 let selectedPairId: string | null = null
 let viewport: Viewport = { scale: 1, offsetX: 0, offsetY: 0 }
 
@@ -184,6 +185,7 @@ thresholdInput.addEventListener('input', () => {
 function recompute(): void {
   canvasEmpty.hidden = bitmap !== null
   if (docA === null || docB === null) {
+    taxonomy = alignTaxonomies(docA?.labels ?? [], docB?.labels ?? [])
     result = null
     selectedPairId = null
     redrawPanel()
@@ -192,7 +194,14 @@ function recompute(): void {
     return
   }
 
-  result = matchBoxes(boxesOf(docA), boxesOf(docB), Number(thresholdInput.value))
+  // Align the two taxonomies first: id where both files agree on one, name
+  // where they do not. Both sides then speak the same class keys.
+  taxonomy = alignTaxonomies(docA.labels, docB.labels)
+  result = matchBoxes(
+    applyTaxonomy(boxesOf(docA), taxonomy),
+    applyTaxonomy(boxesOf(docB), taxonomy),
+    Number(thresholdInput.value),
+  )
   if (selectedPairId !== null && !result.matched.some((p) => pairId(p) === selectedPairId)) {
     selectedPairId = null // the selected pair may not survive a threshold change
   }
@@ -206,8 +215,7 @@ function recompute(): void {
 }
 
 function redrawPanel(): void {
-  const labels = docA?.labels ?? docB?.labels ?? []
-  panel.render(result, labels, notCompared(), selectedPairId)
+  panel.render(result, taxonomy, notCompared(), selectedPairId)
   loadedEl.textContent = [
     image === null ? null : `${image.fileName} ${image.width}x${image.height}`,
     docA === null ? null : 'A',
